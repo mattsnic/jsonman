@@ -1,8 +1,11 @@
 ﻿set(CTEST_OUTPUT_ON_FAILURE TRUE)
 
-add_executable (Test_parse1 test_parse1.c)
-target_link_libraries( Test_parse1 jsonmanlib )
+add_executable (Test_parse_string test_parse_string.c)
+target_link_libraries( Test_parse_string jsonmanlib )
 
+add_executable (Test_parse_number test_parse_number.c)
+target_link_libraries( Test_parse_number jsonmanlib )
 
+add_test (NAME Parse_number COMMAND Test_parse_number)
+add_test (NAME Parse_string COMMAND Test_parse_string)
 
-add_test (NAME Parse1 COMMAND Test_parse1)

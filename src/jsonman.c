@@ -6,6 +6,13 @@
 
 #include "jsonman.h"
 
+#define RESET_NEXT  do { \
+                        element_array[element_count].key_start = 0;   \
+                        element_array[element_count].key_end = 0;     \
+                        element_array[element_count].value_start = 0; \
+                        element_array[element_count].value_end = 0;   \
+                    } while (0)
+
 static const char _COLON = ':';
 static const char _COMMA = ',';
 static const char _POINT = '.';
@@ -181,17 +188,11 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
     char expect_new = 1;
     size_t element_count = 0;
 
-    element_array[element_count].key_start = 0;
-    element_array[element_count].key_end = 0;
-    element_array[element_count].value_start = 0;
-    element_array[element_count].value_end = 0;
+    RESET_NEXT;
 
     size_t i = 0;
     while (i < *nr_objects)
     {
-        if (pos > 215)
-            printf("");
-
         if (stackpos == STACK_SIZE)
         {
             jsonman_last_error = JSONMAN_ERROR_STACK_OVERFLOW;
@@ -291,10 +292,7 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
         {
             element_array[element_count].type = JSONMAN_OBJECT;
             ++element_count;
-            element_array[element_count].key_start = 0;
-            element_array[element_count].key_end = 0;
-            element_array[element_count].value_start = 0;
-            element_array[element_count].value_end = 0;
+            RESET_NEXT;
             ++pos;
             expect_new = 1;
             stack[++stackpos] = JSONMAN_OBJECT;
@@ -306,10 +304,7 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
             ++element_count;
             if (element_count < (*nr_objects))
             {
-                element_array[element_count].key_start = 0;
-                element_array[element_count].key_end = 0;
-                element_array[element_count].value_start = 0;
-                element_array[element_count].value_end = 0;
+                RESET_NEXT;
             }
             ++pos;
             expect_new = 1;
@@ -324,10 +319,7 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
         {
             element_array[element_count].type = JSONMAN_ARRAY;
             ++element_count;
-            element_array[element_count].key_start = 0;
-            element_array[element_count].key_end = 0;
-            element_array[element_count].value_start = 0;
-            element_array[element_count].value_end = 0;
+            RESET_NEXT;
             ++pos;
             expect_new = 1;
             stack[++stackpos] = JSONMAN_ARRAY;
@@ -339,10 +331,7 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
             ++element_count;
             if (element_count < (*nr_objects))
             {
-                element_array[element_count].key_start = 0;
-                element_array[element_count].key_end = 0;
-                element_array[element_count].value_start = 0;
-                element_array[element_count].value_end = 0;
+                RESET_NEXT;
             }
             ++pos;
             expect_new = 1;
@@ -425,10 +414,7 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
                     if (increment_element_count)
                     {
                         ++element_count;
-                        element_array[element_count].key_start = 0;
-                        element_array[element_count].key_end = 0;
-                        element_array[element_count].value_start = 0;
-                        element_array[element_count].value_end = 0;
+                        RESET_NEXT;
                     }
                 }
                 else if (!expect_new) //String value, add value and pop from stack
@@ -439,10 +425,18 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
                     stack[stackpos--] = 0;
 
                     ++element_count;
-                    element_array[element_count].key_start = 0;
-                    element_array[element_count].key_end = 0;
-                    element_array[element_count].value_start = 0;
-                    element_array[element_count].value_end = 0;
+                    RESET_NEXT;
+
+                    size_t next_char_at = temp_pos;
+                    while (next_char_at < len && isspace(json[next_char_at])) {
+                        ++next_char_at;
+                    }
+                    if (json[next_char_at] != _COMMA && json[next_char_at] != _OBJECT_END && json[next_char_at] != _ARRAY_END)
+                    {
+                        jsonman_last_error = JSONMAN_ERROR_INVALID_INPUT;
+                        jsonman_error_pos = next_char_at;
+                        return;
+                    }
                 }
                 else
                 {
@@ -537,10 +531,7 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
                         stack[++stackpos] = JSONMAN_UNQUOTED_VALUE;
                     }
                     ++element_count;
-                    element_array[element_count].key_start = 0;
-                    element_array[element_count].key_end = 0;
-                    element_array[element_count].value_start = 0;
-                    element_array[element_count].value_end = 0;
+                    RESET_NEXT;
                 }
                 else if (!expect_new) //Number or boolean value, add value and pop from stack
                 {
@@ -550,10 +541,18 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
                     stack[stackpos--] = 0;
 
                     ++element_count;
-                    element_array[element_count].key_start = 0;
-                    element_array[element_count].key_end = 0;
-                    element_array[element_count].value_start = 0;
-                    element_array[element_count].value_end = 0;
+                    RESET_NEXT;
+
+                    size_t next_char_at = temp_pos;
+                    while (next_char_at < len && isspace(json[next_char_at])) {
+                        ++next_char_at;
+                    }
+                    if (json[next_char_at] != _COMMA && json[next_char_at] != _OBJECT_END && json[next_char_at] != _ARRAY_END)
+                    {
+                        jsonman_last_error = JSONMAN_ERROR_INVALID_INPUT;
+                        jsonman_error_pos = next_char_at;
+                        return;
+                    }
                 }
                 else
                 {
