@@ -3,7 +3,7 @@
 project(jsonman)
 
 #Comment this definition when done with running the tests
-add_definitions(-DJSONIC_TEST=1)
+add_definitions(-DJSONMAN_TEST=1)
 
 add_subdirectory (src)
 

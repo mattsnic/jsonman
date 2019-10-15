@@ -6,8 +6,8 @@ int main()
                                 \"key\" : \"value\"         \
                              }";
 
-    jsonic_parse(single_string);
-    jsonic_free();
+    jsonman_parse(single_string);
+    jsonman_free();
 
     int ret = 0;
     if (!mem_alloc_ok())

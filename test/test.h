@@ -30,7 +30,7 @@ int mem_alloc_ok()
 
 int error_code()
 {
-    if (jsonic_get_last_error() == JSONIC_NO_ERROR)
+    if (jsonman_get_last_error() == JSONMAN_NO_ERROR)
     {
         return 0;
     }

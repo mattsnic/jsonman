@@ -15,18 +15,18 @@ static const char _OBJECT_START = '{';
 static const char _ARRAY_START = '[';
 static const char _OBJECT_END = '}';
 static const char _ARRAY_END = ']';
-static const char JSONIC_SPACE = ' ';
+static const char JSONMAN_SPACE = ' ';
 
-const char JSONIC_OBJECT = 1;
-const char JSONIC_ARRAY = 2;
-const char JSONIC_STRING = 3;
-const char JSONIC_NUMBER = 4;
-const char JSONIC_BOOLEAN = 5;
-const char JSONIC_NAMED_OBJECT = 6;
-const char JSONIC_NAMED_ARRAY = 7;
-const char JSONIC_OBJECT_END = 9;
-const char JSONIC_ARRAY_END = 10;
-const char JSONIC_UNQUOTED_VALUE = 11;
+const char JSONMAN_OBJECT = 1;
+const char JSONMAN_ARRAY = 2;
+const char JSONMAN_STRING = 3;
+const char JSONMAN_NUMBER = 4;
+const char JSONMAN_BOOLEAN = 5;
+const char JSONMAN_NAMED_OBJECT = 6;
+const char JSONMAN_NAMED_ARRAY = 7;
+const char JSONMAN_OBJECT_END = 9;
+const char JSONMAN_ARRAY_END = 10;
+const char JSONMAN_UNQUOTED_VALUE = 11;
 
 
 #ifdef _WIN32
@@ -41,39 +41,39 @@ static const short INDENT_SPACES = 4;
 uint MALLOCS;
 uint FREES;
 
-jsonic_element_t* element_array = NULL;
+jsonman_element_t* element_array = NULL;
 char* value_array = NULL;
 
 
-static jsonic_error_t jsonic_last_error = JSONIC_NO_ERROR;
-static size_t jsonic_error_pos = 0;
+static jsonman_error_t jsonman_last_error = JSONMAN_NO_ERROR;
+static size_t jsonman_error_pos = 0;
 
 static char* serialized_output = NULL;
 
 
-static void* jsonic_malloc(size_t size)
+static void* jsonman_malloc(size_t size)
 {
     void* ptr = malloc(size);
     if (ptr == NULL)
     {
-        jsonic_last_error = JSONIC_ERROR_MEM_ALLOC;
+        jsonman_last_error = JSONMAN_ERROR_MEM_ALLOC;
         perror("");
     }
     else {
-#ifdef JSONIC_TEST
+#ifdef JSONMAN_TEST
         ++MALLOCS;
 #endif
     }
     return ptr;
 }
 
-static void jsonic_free_value(void* ptr)
+static void jsonman_free_value(void* ptr)
 {
     if (ptr)
     {
         free(ptr);
     }
-#ifdef JSONIC_TEST
+#ifdef JSONMAN_TEST
     ++FREES;
 #endif
 
@@ -125,27 +125,27 @@ static uint is_number(char* json, size_t* start, size_t* end) {
     return (point_count <= 1 && isdigit(json[(*end) - 1]));
 }
 
-uint jsonic_new()
+uint jsonman_new()
 {
-    return jsonic_last_error = JSONIC_NO_ERROR;
+    return jsonman_last_error = JSONMAN_NO_ERROR;
 }
 
 
-void jsonic_free()
+void jsonman_free()
 {
     if (value_array)
     {
-        jsonic_free_value(value_array);
+        jsonman_free_value(value_array);
         value_array = NULL;
     }
     if (element_array)
     {
-        jsonic_free_value(element_array);
+        jsonman_free_value(element_array);
         element_array = NULL;
     }
     if (serialized_output)
     {
-        jsonic_free_value(serialized_output);
+        jsonman_free_value(serialized_output);
         serialized_output = NULL;
     }
 }
@@ -155,21 +155,21 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
 {
     if (*nr_objects == 0 && *values_size == 0)
     {
-        jsonic_last_error = JSONIC_ERROR_NO_DATA;
+        jsonman_last_error = JSONMAN_ERROR_NO_DATA;
         return;
     }
     if (element_array)
     {
-        jsonic_free_value(element_array);
+        jsonman_free_value(element_array);
     }
     if (value_array)
     {
-        jsonic_free_value(value_array);
+        jsonman_free_value(value_array);
     }
-    element_array = jsonic_malloc((*nr_objects) * sizeof(jsonic_element_t));
+    element_array = jsonman_malloc((*nr_objects) * sizeof(jsonman_element_t));
     if (!element_array) return;
 
-    value_array = jsonic_malloc((*values_size) + 1);
+    value_array = jsonman_malloc((*values_size) + 1);
     if (!value_array) return;
     value_array[*values_size] = '\0';
     char stack[STACK_SIZE];
@@ -194,7 +194,7 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
 
         if (stackpos == STACK_SIZE)
         {
-            jsonic_last_error = JSONIC_ERROR_STACK_OVERFLOW;
+            jsonman_last_error = JSONMAN_ERROR_STACK_OVERFLOW;
             return;
         }
         if (pos == len) break;
@@ -214,8 +214,8 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
             //check that comma is not followed by object_end or array_end
             if (json[pos] == _OBJECT_END || json[pos] == _ARRAY_END)
             {
-                jsonic_last_error = JSONIC_ERROR_INVALID_INPUT;  //value not followed by comma when should
-                jsonic_error_pos = pos;
+                jsonman_last_error = JSONMAN_ERROR_INVALID_INPUT;  //value not followed by comma when should
+                jsonman_error_pos = pos;
                 return;
             }
             expect_new = 1;
@@ -279,8 +279,8 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
             }
             if (error)
             {
-                jsonic_last_error = JSONIC_ERROR_INVALID_INPUT;  //value not followed by comma when should
-                jsonic_error_pos = pos;
+                jsonman_last_error = JSONMAN_ERROR_INVALID_INPUT;  //value not followed by comma when should
+                jsonman_error_pos = pos;
                 return;
             }
         }
@@ -289,7 +289,7 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
         {
         case _OBJECT_START:
         {
-            element_array[element_count].type = JSONIC_OBJECT;
+            element_array[element_count].type = JSONMAN_OBJECT;
             ++element_count;
             element_array[element_count].key_start = 0;
             element_array[element_count].key_end = 0;
@@ -297,12 +297,12 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
             element_array[element_count].value_end = 0;
             ++pos;
             expect_new = 1;
-            stack[++stackpos] = JSONIC_OBJECT;
+            stack[++stackpos] = JSONMAN_OBJECT;
             break;
         }
         case _OBJECT_END:
         {
-            element_array[element_count].type = JSONIC_OBJECT_END;
+            element_array[element_count].type = JSONMAN_OBJECT_END;
             ++element_count;
             if (element_count < (*nr_objects))
             {
@@ -314,7 +314,7 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
             ++pos;
             expect_new = 1;
             stack[stackpos--] = 0;
-            if (stack[stackpos] == JSONIC_NAMED_OBJECT)
+            if (stack[stackpos] == JSONMAN_NAMED_OBJECT)
             {
                 stack[stackpos--] = 0;
             }
@@ -322,7 +322,7 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
         }
         case _ARRAY_START:
         {
-            element_array[element_count].type = JSONIC_ARRAY;
+            element_array[element_count].type = JSONMAN_ARRAY;
             ++element_count;
             element_array[element_count].key_start = 0;
             element_array[element_count].key_end = 0;
@@ -330,12 +330,12 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
             element_array[element_count].value_end = 0;
             ++pos;
             expect_new = 1;
-            stack[++stackpos] = JSONIC_ARRAY;
+            stack[++stackpos] = JSONMAN_ARRAY;
             break;
         }
         case _ARRAY_END:
         {
-            element_array[element_count].type = JSONIC_ARRAY_END;
+            element_array[element_count].type = JSONMAN_ARRAY_END;
             ++element_count;
             if (element_count < (*nr_objects))
             {
@@ -347,7 +347,7 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
             ++pos;
             expect_new = 1;
             stack[stackpos--] = 0;
-            if (stack[stackpos] == JSONIC_NAMED_ARRAY)
+            if (stack[stackpos] == JSONMAN_NAMED_ARRAY)
             {
                 stack[stackpos--] = 0;
             }
@@ -369,7 +369,7 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
                     ++temp_pos;
                 }
 
-                if (stack[stackpos] == JSONIC_OBJECT || stack[stackpos] == JSONIC_ARRAY)
+                if (stack[stackpos] == JSONMAN_OBJECT || stack[stackpos] == JSONMAN_ARRAY)
                 {
                     size_t next_char_at = temp_pos;
                     while (next_char_at < len && isspace(json[next_char_at])) {
@@ -385,41 +385,41 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
                         }
                         if (json[next_char_at] == _OBJECT_START)
                         {
-                            element_array[element_count].type = JSONIC_NAMED_OBJECT;
-                            stack[++stackpos] = JSONIC_NAMED_OBJECT;
+                            element_array[element_count].type = JSONMAN_NAMED_OBJECT;
+                            stack[++stackpos] = JSONMAN_NAMED_OBJECT;
                         }
                         else if (json[next_char_at] == _ARRAY_START)
                         {
-                            element_array[element_count].type = JSONIC_NAMED_ARRAY;
-                            stack[++stackpos] = JSONIC_NAMED_ARRAY;
+                            element_array[element_count].type = JSONMAN_NAMED_ARRAY;
+                            stack[++stackpos] = JSONMAN_NAMED_ARRAY;
                         }
                         else if (json[next_char_at] == _DOUBLE_QUOTE)
                         {
-                            element_array[element_count].type = JSONIC_STRING;
-                            stack[++stackpos] = JSONIC_STRING;
+                            element_array[element_count].type = JSONMAN_STRING;
+                            stack[++stackpos] = JSONMAN_STRING;
                             increment_element_count = 0;
                         }
                         else
                         {
-                            element_array[element_count].type = JSONIC_UNQUOTED_VALUE;
-                            stack[++stackpos] = JSONIC_UNQUOTED_VALUE;
+                            element_array[element_count].type = JSONMAN_UNQUOTED_VALUE;
+                            stack[++stackpos] = JSONMAN_UNQUOTED_VALUE;
                             increment_element_count = 0;
                         }
                         element_array[element_count].key_start = pos;
                         element_array[element_count].key_end = temp_pos - 1;
                     }
-                    else if (stack[stackpos] == JSONIC_ARRAY) //Array value
+                    else if (stack[stackpos] == JSONMAN_ARRAY) //Array value
                     {
-                        element_array[element_count].type = JSONIC_STRING;
+                        element_array[element_count].type = JSONMAN_STRING;
                         element_array[element_count].value_start = pos;
                         element_array[element_count].value_end = temp_pos - 1;
                     }
                     else //new key / value pair add to stack
                     {
-                        element_array[element_count].type = JSONIC_STRING;
+                        element_array[element_count].type = JSONMAN_STRING;
                         element_array[element_count].key_start = pos;
                         element_array[element_count].key_end = temp_pos - 1;
-                        stack[++stackpos] = JSONIC_STRING;
+                        stack[++stackpos] = JSONMAN_STRING;
                         increment_element_count = 0;
                     }
                     if (increment_element_count)
@@ -433,7 +433,7 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
                 }
                 else if (!expect_new) //String value, add value and pop from stack
                 {
-                    element_array[element_count].type = JSONIC_STRING;
+                    element_array[element_count].type = JSONMAN_STRING;
                     element_array[element_count].value_start = pos;
                     element_array[element_count].value_end = temp_pos - 1;
                     stack[stackpos--] = 0;
@@ -475,18 +475,18 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
                 char type;
                 if (is_number(json, &pos, &temp_pos))
                 {
-                    type = JSONIC_NUMBER;
+                    type = JSONMAN_NUMBER;
                 }
                 else if (is_boolean(json, &pos, &temp_pos))
                 {
-                    type = JSONIC_BOOLEAN;
+                    type = JSONMAN_BOOLEAN;
                 }
                 else
                 {
-                    type = JSONIC_UNQUOTED_VALUE;
+                    type = JSONMAN_UNQUOTED_VALUE;
                 }
 
-                if (stack[stackpos] == JSONIC_OBJECT || stack[stackpos] == JSONIC_ARRAY) //Number or boolean array value, don't add to stack
+                if (stack[stackpos] == JSONMAN_OBJECT || stack[stackpos] == JSONMAN_ARRAY) //Number or boolean array value, don't add to stack
                 {
                     size_t next_char_at = temp_pos;
                     while (next_char_at < len && isspace(json[next_char_at])) {
@@ -501,29 +501,29 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
                         }
                         if (json[next_char_at] == _OBJECT_START)
                         {
-                            element_array[element_count].type = JSONIC_NAMED_OBJECT;
-                            stack[++stackpos] = JSONIC_NAMED_OBJECT;
+                            element_array[element_count].type = JSONMAN_NAMED_OBJECT;
+                            stack[++stackpos] = JSONMAN_NAMED_OBJECT;
                         }
                         else if (json[next_char_at] == _ARRAY_START)
                         {
-                            element_array[element_count].type = JSONIC_NAMED_ARRAY;
-                            stack[++stackpos] = JSONIC_NAMED_ARRAY;
+                            element_array[element_count].type = JSONMAN_NAMED_ARRAY;
+                            stack[++stackpos] = JSONMAN_NAMED_ARRAY;
                         }
                         else
                         {
-                            jsonic_last_error = JSONIC_ERROR_INVALID_INPUT;
-                            jsonic_error_pos = next_char_at;
+                            jsonman_last_error = JSONMAN_ERROR_INVALID_INPUT;
+                            jsonman_error_pos = next_char_at;
                             return;
                         }
                         element_array[element_count].key_start = pos;
                         element_array[element_count].key_end = temp_pos - 1;
                     }
-                    else if (stack[stackpos] == JSONIC_ARRAY)//Array value
+                    else if (stack[stackpos] == JSONMAN_ARRAY)//Array value
                     {
-                        if (type == JSONIC_UNQUOTED_VALUE)
+                        if (type == JSONMAN_UNQUOTED_VALUE)
                         {
-                            jsonic_last_error = JSONIC_ERROR_INVALID_INPUT;
-                            jsonic_error_pos = next_char_at;
+                            jsonman_last_error = JSONMAN_ERROR_INVALID_INPUT;
+                            jsonman_error_pos = next_char_at;
                             return;
                         }
                         element_array[element_count].type = type;
@@ -534,7 +534,7 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
                         element_array[element_count].type = type;
                         element_array[element_count].key_start = pos;
                         element_array[element_count].key_end = temp_pos - 1;
-                        stack[++stackpos] = JSONIC_UNQUOTED_VALUE;
+                        stack[++stackpos] = JSONMAN_UNQUOTED_VALUE;
                     }
                     ++element_count;
                     element_array[element_count].key_start = 0;
@@ -654,51 +654,51 @@ static void init_parse(char* json, size_t* nr_objects, size_t* values_size)
 
 
 
-void jsonic_parse(char* json)
+void jsonman_parse(char* json)
 {
 
-#ifdef JSONIC_TEST
+#ifdef JSONMAN_TEST
     printf("Test is defined\n");
     MALLOCS = 0;
     FREES = 0;
-#endif // JSONIC_TEST
+#endif // JSONMAN_TEST
 
     size_t nr_objects = 0;
     size_t values_size = 0;
     init_parse(json, &nr_objects, &values_size);
     parse(json, &nr_objects, &values_size);
 
-#ifdef JSONIC_TEST
+#ifdef JSONMAN_TEST
 
     printf("Nr objects: %d\n", nr_objects);
     printf("Values size: %d\n", values_size);
 #endif
 }
 
-static void calculate_size(jsonic_element_t* element, uint* output_size, jsonic_print_t* type, uint* level)
+static void calculate_size(jsonman_element_t* element, uint* output_size, jsonman_print_t* type, uint* level)
 {
 }
 
-static void serialize(jsonic_element_t* element, char* output, jsonic_print_t* type, uint* level)
+static void serialize(jsonman_element_t* element, char* output, jsonman_print_t* type, uint* level)
 {
 }
 
-char* jsonic_serialize(jsonic_element_t* root_element, jsonic_print_t print_type, uint* output_size)
+char* jsonman_serialize(jsonman_element_t* root_element, jsonman_print_t print_type, uint* output_size)
 {
-    jsonic_last_error = JSONIC_NO_ERROR;
+    jsonman_last_error = JSONMAN_NO_ERROR;
 
-    jsonic_element_t* structure = NULL;
-    jsonic_print_t type;
+    jsonman_element_t* structure = NULL;
+    jsonman_print_t type;
     if (serialized_output)
     {
-        jsonic_free_value(serialized_output);
+        jsonman_free_value(serialized_output);
     }
 
 
     uint size = 0;
     uint level = 0;
     calculate_size(structure, &size, &type, &level);
-    serialized_output = jsonic_malloc((size + 1) * sizeof(char));
+    serialized_output = jsonman_malloc((size + 1) * sizeof(char));
     serialized_output[size] = '\0';
     level = 0;
     serialize(structure, serialized_output, &type, &level);
@@ -711,12 +711,12 @@ char* jsonic_serialize(jsonic_element_t* root_element, jsonic_print_t print_type
 }
 
 
-jsonic_error_t jsonic_get_last_error()
+jsonman_error_t jsonman_get_last_error()
 {
-    return jsonic_last_error;
+    return jsonman_last_error;
 }
 
-int jsonic_get_error_pos()
+int jsonman_get_error_pos()
 {
-    return jsonic_error_pos;
+    return jsonman_error_pos;
 }
