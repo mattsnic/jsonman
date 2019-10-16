@@ -13,6 +13,26 @@
                         element_array[element_count].value_end = 0;   \
                     } while (0)
 
+#define SET_KEY_DATA(pos, temp_pos) do {                                                                        \
+                                        size_t length = temp_pos - pos;                                         \
+                                        element_array[element_count].key_start = value_array_pos;               \
+                                        element_array[element_count].key_end = (value_array_pos + length) - 1;  \
+                                        for (int i = 0; i < length; i++)                                        \
+                                        {                                                                       \
+                                            value_array[value_array_pos++] = json[pos + i];                     \
+                                        }                                                                       \
+                                    } while(0)
+
+#define SET_VALUE_DATA(pos, temp_pos) do {                                                                      \
+                                        size_t length = temp_pos - pos;                                         \
+                                        element_array[element_count].value_start = value_array_pos;             \
+                                        element_array[element_count].value_end = (value_array_pos + length) - 1;\
+                                        for (int i = 0; i < length; i++)                                        \
+                                        {                                                                       \
+                                            value_array[value_array_pos++] = json[pos + i];                     \
+                                        }                                                                       \
+                                      } while (0)
+
 static const char _COLON = ':';
 static const char _COMMA = ',';
 static const char _POINT = '.';
@@ -166,14 +186,7 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
         jsonman_last_error = JSONMAN_ERROR_NO_DATA;
         return;
     }
-    if (element_array)
-    {
-        jsonman_free_value(element_array);
-    }
-    if (value_array)
-    {
-        jsonman_free_value(value_array);
-    }
+    jsonman_free();
     element_array = jsonman_malloc((*nr_objects) * sizeof(jsonman_element_t));
     if (!element_array) return;
 
@@ -186,6 +199,7 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
 
     size_t len = strlen(json);
     size_t pos = 0;
+    size_t value_array_pos = 0;
     char expect_new = 1;
     size_t element_count = 0;
 
@@ -395,20 +409,31 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
                             stack[++stackpos] = JSONMAN_UNQUOTED_VALUE;
                             increment_element_count = 0;
                         }
+
+                        SET_KEY_DATA(pos, temp_pos);
+                        /*
+                        size_t length = element_array[element_count].key_end - element_array[element_count].key_start;
+                        for (int i = 0; i < length; i++)
+                        {
+                            value_array[value_array_pos++] = json[pos + i];
+                        }
                         element_array[element_count].key_start = pos;
                         element_array[element_count].key_end = temp_pos - 1;
+                        */
                     }
                     else if (stack[stackpos] == JSONMAN_ARRAY) //Array value
                     {
                         element_array[element_count].type = JSONMAN_STRING;
-                        element_array[element_count].value_start = pos;
-                        element_array[element_count].value_end = temp_pos - 1;
+                        SET_VALUE_DATA(pos, temp_pos);
+                        //element_array[element_count].value_start = pos;
+                        //element_array[element_count].value_end = temp_pos - 1;
                     }
                     else //new key / value pair add to stack
                     {
                         element_array[element_count].type = JSONMAN_STRING;
-                        element_array[element_count].key_start = pos;
-                        element_array[element_count].key_end = temp_pos - 1;
+                        SET_KEY_DATA(pos, temp_pos);
+                        //element_array[element_count].key_start = pos;
+                        //element_array[element_count].key_end = temp_pos - 1;
                         stack[++stackpos] = JSONMAN_STRING;
                         increment_element_count = 0;
                     }
@@ -421,8 +446,9 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
                 else if (!expect_new) //String value, add value and pop from stack
                 {
                     element_array[element_count].type = JSONMAN_STRING;
-                    element_array[element_count].value_start = pos;
-                    element_array[element_count].value_end = temp_pos - 1;
+                    SET_VALUE_DATA(pos, temp_pos);
+                    //element_array[element_count].value_start = pos;
+                    //element_array[element_count].value_end = temp_pos - 1;
                     stack[stackpos--] = 0;
 
                     ++element_count;
@@ -510,8 +536,9 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
                             jsonman_error_pos = next_char_at;
                             return;
                         }
-                        element_array[element_count].key_start = pos;
-                        element_array[element_count].key_end = temp_pos - 1;
+                        SET_KEY_DATA(pos, temp_pos);
+                        //element_array[element_count].key_start = pos;
+                        //element_array[element_count].key_end = temp_pos - 1;
                     }
                     else if (stack[stackpos] == JSONMAN_ARRAY)//Array value
                     {
@@ -522,13 +549,15 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
                             return;
                         }
                         element_array[element_count].type = type;
-                        element_array[element_count].value_start = pos;
-                        element_array[element_count].value_end = temp_pos - 1;
+                        SET_VALUE_DATA(pos, temp_pos);
+                        //element_array[element_count].value_start = pos;
+                        //element_array[element_count].value_end = temp_pos - 1;
                     }
                     else { //new key / value pair add to stack
                         element_array[element_count].type = type;
-                        element_array[element_count].key_start = pos;
-                        element_array[element_count].key_end = temp_pos - 1;
+                        SET_KEY_DATA(pos, temp_pos);
+                        //element_array[element_count].key_start = pos;
+                        //element_array[element_count].key_end = temp_pos - 1;
                         stack[++stackpos] = JSONMAN_UNQUOTED_VALUE;
                     }
                     ++element_count;
@@ -537,6 +566,7 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
                 else if (!expect_new) //Number or boolean value, add value and pop from stack
                 {
                     element_array[element_count].type = type;
+                    SET_VALUE_DATA(pos, temp_pos);
                     element_array[element_count].value_start = pos;
                     element_array[element_count].value_end = temp_pos - 1;
                     stack[stackpos--] = 0;
@@ -653,6 +683,7 @@ static void init_parse(char* json, size_t* nr_objects, size_t* values_size)
     nr_objects_store = *nr_objects;
 }
 
+//************************* Public functions below *************************************
 
 
 int jsonman_parse(char* json)
@@ -672,6 +703,99 @@ int jsonman_parse(char* json)
     if (jsonman_last_error != JSONMAN_NO_ERROR)
     {
         return -1;
+    }
+    return 0;
+}
+
+int get_key_length(int id, size_t* out_value)
+{
+    if (!out_value)
+    {
+        jsonman_last_error = JSONMAN_ERROR_OUT_PARAMETER_IS_NULL;
+        return -1;
+    }
+    if (nr_objects_store <= id)
+    {
+        jsonman_last_error = JSONMAN_ERROR_INVALID_ID;
+        return -1;
+    }
+    *out_value = (1 + element_array[id].key_end) - element_array[id].key_start;
+    return 0;
+}
+
+int get_value_length(int id, size_t* out_value)
+{
+    if (!out_value)
+    {
+        jsonman_last_error = JSONMAN_ERROR_OUT_PARAMETER_IS_NULL;
+        return -1;
+    }
+    if (nr_objects_store <= id)
+    {
+        jsonman_last_error = JSONMAN_ERROR_INVALID_ID;
+        return -1;
+    }
+    if (element_array[id].type == JSONMAN_OBJECT || element_array[id].type == JSONMAN_NAMED_OBJECT
+        || element_array[id].type == JSONMAN_ARRAY || element_array[id].type == JSONMAN_NAMED_ARRAY)
+    {
+        jsonman_last_error = JSONMAN_ERROR_SIMPLE_VALUE_NOT_PRESENT;
+        return -1;
+    }
+    *out_value = (1 + element_array[id].value_end) - element_array[id].value_start;
+    return 0;
+}
+
+int get_key(int id, char* out_buffer)
+{
+    if (!out_buffer)
+    {
+        jsonman_last_error = JSONMAN_ERROR_OUT_PARAMETER_IS_NULL;
+        return -1;
+    }
+    if (nr_objects_store <= id)
+    {
+        jsonman_last_error = JSONMAN_ERROR_INVALID_ID;
+        return -1;
+    }
+    size_t size = (1 + element_array[id].key_end) - element_array[id].key_start;
+    if (size > 0)
+    {
+        int count = 0;
+        for (int i = element_array[id].key_start; i <= element_array[id].key_end; i++)
+        {
+            out_buffer[count++] = value_array[i];
+        }
+    }
+    return 0;
+}
+
+int get_value_as_string(int id, char* out_buffer)
+{
+    if (!out_buffer)
+    {
+        jsonman_last_error = JSONMAN_ERROR_OUT_PARAMETER_IS_NULL;
+        return -1;
+    }
+    if (nr_objects_store <= id)
+    {
+        jsonman_last_error = JSONMAN_ERROR_INVALID_ID;
+        return -1;
+    }
+    if (element_array[id].type == JSONMAN_OBJECT || element_array[id].type == JSONMAN_NAMED_OBJECT
+        || element_array[id].type == JSONMAN_ARRAY || element_array[id].type == JSONMAN_NAMED_ARRAY)
+    {
+        jsonman_last_error = JSONMAN_ERROR_SIMPLE_VALUE_NOT_PRESENT;
+        return -1;
+    }
+
+    size_t size = element_array[id].value_end - element_array[id].value_start;
+    if (size > 0)
+    {
+        int count = 0;
+        for (int i = element_array[id].value_start; i <= element_array[id].value_end; i++)
+        {
+            out_buffer[count++] = value_array[i];
+        }
     }
     return 0;
 }
