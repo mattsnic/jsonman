@@ -41,7 +41,10 @@ extern "C" {
         JSONMAN_ERROR_INVALID_INPUT = 1,
         JSONMAN_ERROR_MEM_ALLOC = 2,
         JSONMAN_ERROR_NO_DATA = 3,
-        JSONMAN_ERROR_STACK_OVERFLOW
+        JSONMAN_ERROR_STACK_OVERFLOW = 4,
+        JSONMAN_ERROR_INVALID_ID = 5,
+        JSONMAN_ERROR_SIMPLE_VALUE_NOT_PRESENT = 6,
+        JSONMAN_ERROR_OUT_PARAMETER_IS_NULL = 7
     } jsonman_error_t;
 
     /**
@@ -79,6 +82,13 @@ extern "C" {
      */
     jsonman_error_t jsonman_get_last_error();
 
+    /**
+     * Call this method to get the position where the parse-error occured. Note that the position includes count of 'binary bytes' like new line, tabs etc.
+     * Returns negative value if no error has occured.
+     */
+    int jsonman_get_error_pos();
+
+
 
     /**********************************/
     /*                                */
@@ -101,15 +111,29 @@ extern "C" {
     /***************************************/
 
     /*
-     * Convenience function to get the next element id. Root element id is always zero.
-     * If no root element exist a negative value is returned.
+     * Returns the key length for a particular element id in the size_t out parameter.
+     * Return value from the function is zero on success and non-zero on failure. Call function jsonman_get_last_error() for reason.
+
      */
-    int next_id(int id);
+    int get_key_length(int id, size_t* out_value);
 
     /*
-     * Get element type for the given id. If given id is invalid, a negative number is returned.
+     * Returns the value length for a particular element id in the size_t out parameter. This assumes that the id points to an element of either a string, number, boolean or an unquoted value (not object, array etc.)
+     * Return value from the function is zero on success and non-zero on failure. Call function jsonman_get_last_error() for reason.
      */
-    short get_type(int id);
+    int get_value_length(int id, size_t* out_value);
+
+    /*
+     * Get the key for a given id as a string if a key is present. Use get_key_length() function to determine size to allocate for the buffer (the size does not include the null-terminator).
+     * Returns zero on success and non-zero on failure. Call function jsonman_get_last_error() for reason.
+     */
+    int get_key(int id, char* out_buffer);
+
+    /*
+     * Returns the value for a given id as a string value in the output buffer. 
+     * Returns zero on success and non-zero on failure. Call function jsonman_get_last_error() for reason.
+     */
+    int get_value_as_string(int id, char* out_buffer);
 
     /**
      * Serialize a Json-structure to a string.
@@ -123,11 +147,25 @@ extern "C" {
      */
     char* jsonman_serialize(jsonman_element_t* root_element, jsonman_print_t print_type, uint* output_size);
 
-    /**
-     * Call this method to get the position where the parse-error occured. Note that the position includes count of 'binary bytes' like new line, tabs etc.
-     * Returns negative value if no error has occured.
+
+
+    /*************************************************************************************/
+    /*                                                                                   */
+    /*      Functions used by tests that are probably not very useful in other cases     */
+    /*                                                                                   */
+    /*************************************************************************************/
+
+     /*
+      * Convenience function to get the next element id. Root element id is always zero.
+      * If no root element exist a negative value is returned.
+      */
+    int next_id(int id);
+
+    /*
+     * Get element type for the given id. If given id is invalid, a negative number is returned.
      */
-    int jsonman_get_error_pos();
+    short get_type(int id);
+
 
 
 #ifdef __cplusplus
