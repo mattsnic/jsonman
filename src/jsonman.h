@@ -1,4 +1,4 @@
-﻿// jsonman.h : Include file for standard system include files,
+// jsonman.h : Include file for standard system include files,
 // or project specific include files.
 
 #ifndef JSONMAN_H
@@ -63,17 +63,11 @@ extern "C" {
     extern uint MALLOCS;
     extern uint FREES;
 
-    /**************************/
-    /*                        */
-    /*     User functions     */
-    /*                        */
-    /**************************/
-
-    /**
-     * Always start by calling jsonman_init() whether you are serializing or deserializing.
-     * Returns zero on success or non-zero on failure. The return value is the same as returned by the function jsonman_get_last_error().
-     */
-    uint jsonman_init();
+    /*****************************/
+    /*                           */
+    /*     General functions     */
+    /*                           */
+    /*****************************/
 
     /**
      * Always call jsonman_free() when done.
@@ -81,12 +75,41 @@ extern "C" {
     void jsonman_free();
 
     /**
+     * Call this method to get the latest error code.
+     */
+    jsonman_error_t jsonman_get_last_error();
+
+
+    /**********************************/
+    /*                                */
+    /*          Json parsing          */
+    /*                                */
+    /**********************************/
+
+    /**
      * Parse a Json string
      *
-     * Returns a pointer to the root element of the structure.
-     * If pointer value is zero, call jsonman_get_last_error() for error code.
+     * Returns zero on success. If value is non-zero, call jsonman_get_last_error() to get the reason.
      */
-    void jsonman_parse(char* json);
+    int jsonman_parse(char* json);
+
+
+    /***************************************/
+    /*                                     */
+    /*          Json manipulation          */
+    /*                                     */
+    /***************************************/
+
+    /*
+     * Convenience function to get the next element id. Root element id is always zero.
+     * If no root element exist a negative value is returned.
+     */
+    int next_id(int id);
+
+    /*
+     * Get element type for the given id. If given id is invalid, a negative number is returned.
+     */
+    short get_type(int id);
 
     /**
      * Serialize a Json-structure to a string.
@@ -99,11 +122,6 @@ extern "C" {
      * Returns a pointer to a string containing the serialized data.
      */
     char* jsonman_serialize(jsonman_element_t* root_element, jsonman_print_t print_type, uint* output_size);
-
-    /**
-     * Call this method to get the latest error code.
-     */
-    jsonman_error_t jsonman_get_last_error();
 
     /**
      * Call this method to get the position where the parse-error occured. Note that the position includes count of 'binary bytes' like new line, tabs etc.
