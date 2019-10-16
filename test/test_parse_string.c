@@ -10,26 +10,30 @@ int main()
                         }";
 
     jsonman_parse(one_string);
+    ERROR_CODE_CHECK;
+
+    int id = 0;
+    do
+    {
+        switch (id)
+        {
+        case 0:
+            ASSERT_EQUALS(get_type(id), JSONMAN_OBJECT);
+            break;
+        case 1:
+            ASSERT_EQUALS(get_type(id), JSONMAN_STRING);
+            break;
+        case 2:
+            ASSERT_EQUALS(get_type(id), JSONMAN_OBJECT_END);
+            break;
+        default:
+            ERROR_AND_RETURN;
+        }
+        id = next_id(id);
+    } while (id > 0);
+
     jsonman_free();
-
-    if (MALLOCS != FREES)
-    {
-        ERROR;
-        return 1;
-    }
-
-    if (!mem_alloc_ok())
-    {
-        ERROR;
-        return 1;
-    }
-
-    if (error_code())
-    {
-        ERROR;
-        return 1;
-    }
-
+    MEM_ALLOC_CHECK;
 
     /*
      * Testing with two strings
@@ -40,19 +44,34 @@ int main()
                          }";
 
     jsonman_parse(two_strings);
+    ERROR_CODE_CHECK;
+
+    id = 0;
+    do
+    {
+        switch (id)
+        {
+        case 0:
+            ASSERT_EQUALS(get_type(id), JSONMAN_OBJECT);
+            break;
+        case 1:
+            ASSERT_EQUALS(get_type(id), JSONMAN_STRING);
+            break;
+        case 2:
+            ASSERT_EQUALS(get_type(id), JSONMAN_STRING);
+            break;
+        case 3:
+            ASSERT_EQUALS(get_type(id), JSONMAN_OBJECT_END);
+            break;
+        default:
+            ERROR_AND_RETURN;
+        }
+        id = next_id(id);
+    } while (id > 0);
+
+
     jsonman_free();
-
-    if (!mem_alloc_ok())
-    {
-        ERROR;
-        return 1;
-    }
-
-    if (error_code())
-    {
-        ERROR;
-        return 1;
-    }
+    MEM_ALLOC_CHECK;
 
     return 0;
 }
