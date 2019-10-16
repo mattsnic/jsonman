@@ -1,4 +1,4 @@
-﻿/**************************/
+/**************************/
 /*                        */
 /*     Implementation     */
 /*                        */
@@ -50,6 +50,7 @@ uint FREES;
 
 jsonman_element_t* element_array = NULL;
 char* value_array = NULL;
+size_t nr_objects_store = 0;
 
 
 static jsonman_error_t jsonman_last_error = JSONMAN_NO_ERROR;
@@ -280,7 +281,7 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
             }
             if (error)
             {
-                jsonman_last_error = JSONMAN_ERROR_INVALID_INPUT;  //value not followed by comma when should
+                jsonman_last_error = JSONMAN_ERROR_INVALID_INPUT; 
                 jsonman_error_pos = pos;
                 return;
             }
@@ -649,11 +650,12 @@ static void init_parse(char* json, size_t* nr_objects, size_t* values_size)
         }
         ++i;
     }
+    nr_objects_store = *nr_objects;
 }
 
 
 
-void jsonman_parse(char* json)
+int jsonman_parse(char* json)
 {
 
 #ifdef JSONMAN_TEST
@@ -667,11 +669,40 @@ void jsonman_parse(char* json)
     init_parse(json, &nr_objects, &values_size);
     parse(json, &nr_objects, &values_size);
 
-#ifdef JSONMAN_TEST
+    if (jsonman_last_error != JSONMAN_NO_ERROR)
+    {
+        return -1;
+    }
+    return 0;
+}
 
-    printf("Nr objects: %d\n", nr_objects);
-    printf("Values size: %d\n", values_size);
-#endif
+int next_id(int id)
+{
+    if (element_array)
+    {
+        if (id <= 0)
+        {
+            return 0;
+        }
+        ++id;
+        if (nr_objects_store > id)
+        {
+            return id;
+        }
+    }
+    return -1;
+}
+
+short get_type(int id)
+{
+    if (element_array)
+    {
+        if (nr_objects_store > id)
+        {
+            return element_array[id].type;
+        }
+    }
+    return -1;
 }
 
 static void calculate_size(jsonman_element_t* element, uint* output_size, jsonman_print_t* type, uint* level)
