@@ -1,4 +1,4 @@
-﻿set(CTEST_OUTPUT_ON_FAILURE TRUE)
+#set(CTEST_OUTPUT_ON_FAILURE TRUE)
 
 add_executable (Test_parse_string test_parse_string.c)
 target_link_libraries( Test_parse_string jsonmanlib )
