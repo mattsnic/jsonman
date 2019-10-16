@@ -205,18 +205,16 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
 
     RESET_NEXT;
 
-    size_t i = 0;
-    while (i < *nr_objects)
+    while (pos < len)
     {
+        while (isspace(json[pos])) ++pos;
+        if (pos == len) break;
+
         if (stackpos == STACK_SIZE)
         {
             jsonman_last_error = JSONMAN_ERROR_STACK_OVERFLOW;
             return;
         }
-        if (pos == len) break;
-        while (isspace(json[pos])) ++pos;
-        if (pos == len) break;
-
         if (json[pos] == _COLON)  //between key and value
         {
             ++pos;
@@ -595,7 +593,6 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
             pos += length;
         }
         }
-        ++i;
     }
 }
 
@@ -804,7 +801,7 @@ int next_id(int id)
 {
     if (element_array)
     {
-        if (id <= 0)
+        if (id < 0)
         {
             return 0;
         }
@@ -821,7 +818,7 @@ short get_type(int id)
 {
     if (element_array)
     {
-        if (nr_objects_store > id)
+        if (nr_objects_store >= id)
         {
             return element_array[id].type;
         }
