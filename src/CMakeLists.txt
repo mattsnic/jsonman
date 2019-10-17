@@ -2,4 +2,4 @@
 
 add_library (jsonmanlib STATIC "jsonman.h" "jsonman.c")
 
-target_compile_definitions(jsonmanlib PRIVATE JSONMAN_TEST=1 ALLOW_UNQUOTED_JSON_KEYS=1)
+target_compile_definitions(jsonmanlib PRIVATE JM_TEST=1 JM_ALLOW_UNQUOTED_JSON_KEYS=1)

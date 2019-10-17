@@ -25,13 +25,13 @@
                             fprintf(f, "Error occured in file %s on line %d\n", __FILE__, __LINE__);  \
                             fflush(f);                                                                \
                             fclose(f);                                                                \
-                            jsonman_free();                                                           \
+                            jm_free();                                                           \
                             return 1;                                                                 \
                          } while(0)                                                                   \
 
 #define MEM_ALLOC_CHECK if (MALLOCS <= 0 || FREES <= 0 || MALLOCS != FREES)  ERROR_AND_RETURN
 
-#define ERROR_CODE_CHECK if (jsonman_get_last_error() != JSONMAN_NO_ERROR) ERROR_AND_RETURN
+#define ERROR_CODE_CHECK if (jm_get_last_error() != JM_NO_ERROR) ERROR_AND_RETURN
 
 #define ASSERT_EQUALS(expected, actual) if (expected != actual) ERROR_AND_RETURN
 
@@ -39,24 +39,24 @@
 
 #define ASSERT_KEY(id, expected_length, expected_value) do {                                             \
                                                             size_t key_length;                           \
-                                                            get_key_length(id, &key_length);             \
+                                                            jm_get_key_length(id, &key_length);             \
                                                             ASSERT_EQUALS(expected_length, key_length);  \
                                                                                                          \
                                                             char key[key_length + 1];                    \
                                                             key[key_length] = '\0';                      \
-                                                            get_key(id, key);                            \
+                                                            jm_get_key(id, key);                            \
                                                             ASSERT_STRING_EQUALS(expected_value, key);   \
                                                         } while (0)
 
 
 #define ASSERT_VALUE(id, expected_length, expected_value) do {                                                 \
                                                                 size_t value_length;                           \
-                                                                get_value_length(id, &value_length);           \
+                                                                jm_get_value_length(id, &value_length);           \
                                                                 ASSERT_EQUALS(expected_length, value_length);  \
                                                                                                                \
                                                                 char value[value_length + 1];                  \
                                                                 value[value_length] = '\0';                    \
-                                                                get_value_as_string(id, value);                \
+                                                                jm_get_value_as_string(id, value);                \
                                                                 ASSERT_STRING_EQUALS(expected_value, value);   \
                                                             } while (0)
 

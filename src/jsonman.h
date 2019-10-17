@@ -22,38 +22,38 @@ extern "C" {
     /**
      * Type of value
      */
-    const char JSONMAN_OBJECT;
-    const char JSONMAN_ARRAY;
-    const char JSONMAN_STRING;
-    const char JSONMAN_NUMBER;
-    const char JSONMAN_BOOLEAN;
-    const char JSONMAN_NAMED_OBJECT;
-    const char JSONMAN_NAMED_ARRAY;
-    const char JSONMAN_OBJECT_END;
-    const char JSONMAN_ARRAY_END;
-    const char JSONMAN_UNQUOTED_VALUE;
+    const char JM_OBJECT;
+    const char JM_ARRAY;
+    const char JM_STRING;
+    const char JM_NUMBER;
+    const char JM_BOOLEAN;
+    const char JM_NAMED_OBJECT;
+    const char JM_NAMED_ARRAY;
+    const char JM_OBJECT_END;
+    const char JM_ARRAY_END;
+    const char JM_UNQUOTED_VALUE;
 
     /**
      *  Enum for possible causes of error
      */
     typedef enum {
-        JSONMAN_NO_ERROR = 0,
-        JSONMAN_ERROR_INVALID_INPUT = 1,
-        JSONMAN_ERROR_MEM_ALLOC = 2,
-        JSONMAN_ERROR_NO_DATA = 3,
-        JSONMAN_ERROR_STACK_OVERFLOW = 4,
-        JSONMAN_ERROR_INVALID_ID = 5,
-        JSONMAN_ERROR_SIMPLE_VALUE_NOT_PRESENT = 6,
-        JSONMAN_ERROR_OUT_PARAMETER_IS_NULL = 7
-    } jsonman_error_t;
+        JM_NO_ERROR = 0,
+        JM_ERROR_INVALID_INPUT = 1,
+        JM_ERROR_MEM_ALLOC = 2,
+        JM_ERROR_NO_DATA = 3,
+        JM_ERROR_STACK_OVERFLOW = 4,
+        JM_ERROR_INVALID_ID = 5,
+        JM_ERROR_SIMPLE_VALUE_NOT_PRESENT = 6,
+        JM_ERROR_OUT_PARAMETER_IS_NULL = 7
+    } jm_error_t;
 
     /**
      *  Enum to handle serialization format
      */
     typedef enum {
-        JSONMAN_PRETTY_PRINT,
-        JSONMAN_COMPACT_PRINT
-    } jsonman_print_t;
+        JM_PRETTY,
+        JM_COMPACT
+    } jm_format_t;
 
     typedef struct {
         short type;
@@ -61,7 +61,7 @@ extern "C" {
         size_t key_end;
         size_t value_start;
         size_t value_end;
-    } jsonman_element_t;
+    } jm_element_t;
 
     extern uint MALLOCS;
     extern uint FREES;
@@ -73,20 +73,20 @@ extern "C" {
     /*****************************/
 
     /**
-     * Always call jsonman_free() when done.
+     * Always call jm_free() when done.
      */
-    void jsonman_free();
+    void jm_free();
 
     /**
      * Call this method to get the latest error code.
      */
-    jsonman_error_t jsonman_get_last_error();
+    jm_error_t jm_get_last_error();
 
     /**
      * Call this method to get the position where the parse-error occured. Note that the position includes count of 'binary bytes' like new line, tabs etc.
      * Returns negative value if no error has occured.
      */
-    int jsonman_get_error_pos();
+    int jm_get_error_pos();
 
 
 
@@ -99,9 +99,9 @@ extern "C" {
     /**
      * Parse a Json string
      *
-     * Returns zero on success. If value is non-zero, call jsonman_get_last_error() to get the reason.
+     * Returns zero on success. If value is non-zero, call jm_get_last_error() to get the reason.
      */
-    int jsonman_parse(char* json);
+    int jm_parse(char* json);
 
 
     /***************************************/
@@ -112,40 +112,40 @@ extern "C" {
 
     /*
      * Returns the key length for a particular element id in the size_t out parameter.
-     * Return value from the function is zero on success and non-zero on failure. Call function jsonman_get_last_error() for reason.
+     * Return value from the function is zero on success and non-zero on failure. Call function jm_get_last_error() for reason.
 
      */
-    int get_key_length(int id, size_t* out_value);
+    int jm_get_key_length(int id, size_t* out_value);
 
     /*
      * Returns the value length for a particular element id in the size_t out parameter. This assumes that the id points to an element of either a string, number, boolean or an unquoted value (not object, array etc.)
-     * Return value from the function is zero on success and non-zero on failure. Call function jsonman_get_last_error() for reason.
+     * Return value from the function is zero on success and non-zero on failure. Call function jm_get_last_error() for reason.
      */
-    int get_value_length(int id, size_t* out_value);
+    int jm_get_value_length(int id, size_t* out_value);
 
     /*
-     * Get the key for a given id as a string if a key is present. Use get_key_length() function to determine size to allocate for the buffer (the size does not include the null-terminator).
-     * Returns zero on success and non-zero on failure. Call function jsonman_get_last_error() for reason.
+     * Get the key for a given id as a string if a key is present. Use jm_get_key_length() function to determine size to allocate for the buffer (the size does not include the null-terminator).
+     * Returns zero on success and non-zero on failure. Call function jm_get_last_error() for reason.
      */
-    int get_key(int id, char* out_buffer);
+    int jm_get_key(int id, char* out_buffer);
 
     /*
      * Returns the value for a given id as a string value in the output buffer.
-     * Returns zero on success and non-zero on failure. Call function jsonman_get_last_error() for reason.
+     * Returns zero on success and non-zero on failure. Call function jm_get_last_error() for reason.
      */
-    int get_value_as_string(int id, char* out_buffer);
+    int jm_get_value_as_string(int id, char* out_buffer);
 
     /**
      * Serialize a Json-structure to a string.
      *
      * Parameters:
      *      root:        If you have parsed or created a new structure and want to serialize the whole structure, you can pass NULL here. Its purpose is to be able to serialize part of a structure.
-     *      print_type:  Use a value from the jsonman_print_t struct, either JSONMAN_COMPACT_PRINT (no spaces or line breaks) or JSONMAN_PRETTY_PRINT (formatted). If NULL is passed, JSONMAN_PRETTY_PRINT is assumed.
+     *      print_type:  Use a value from the jm_format_t struct, either JM_COMPACT (no spaces or line breaks) or JM_PRETTY (formatted). If NULL is passed, JM_PRETTY is assumed.
      *      output_size: The size in bytes of the string returned. If you don't care about the size you can pass NULL here.
      *
      * Returns a pointer to a string containing the serialized data.
      */
-    char* jsonman_serialize(jsonman_element_t* root_element, jsonman_print_t print_type, uint* output_size);
+    char* jm_serialize(jm_element_t* root_element, jm_format_t print_type, uint* output_size);
 
 
 
@@ -159,12 +159,12 @@ extern "C" {
       * Convenience function to get the next element id. Root element id is always zero.
       * If no root element exist a negative value is returned.
       */
-    int next_id(int id);
+    int jm_next_id(int id);
 
     /*
      * Get element type for the given id. If given id is invalid, a negative number is returned.
      */
-    short get_type(int id);
+    short jm_get_type(int id);
 
 
 
