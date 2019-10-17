@@ -130,7 +130,7 @@ extern "C" {
     int get_key(int id, char* out_buffer);
 
     /*
-     * Returns the value for a given id as a string value in the output buffer. 
+     * Returns the value for a given id as a string value in the output buffer.
      * Returns zero on success and non-zero on failure. Call function jsonman_get_last_error() for reason.
      */
     int get_value_as_string(int id, char* out_buffer);
