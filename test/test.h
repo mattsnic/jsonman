@@ -28,5 +28,6 @@
 
 #define ASSERT_STRING_EQUALS(expected, actual) if (strcmp(expected, actual) != 0) ERROR_AND_RETURN
 
+#define OK printf("OK\n")
 
 
