@@ -6,11 +6,18 @@
 
 #include "jsonman.h"
 
-#define RESET_NEXT  do { \
-                        element_array[element_count].key_start = 0;   \
-                        element_array[element_count].key_end = 0;     \
-                        element_array[element_count].value_start = 0; \
-                        element_array[element_count].value_end = 0;   \
+#define RESET_NEXT  do {                                                      \
+                        if (element_count < (*nr_objects))                    \
+                        {                                                     \
+                            ++element_count;                                  \
+                            if (element_count < (*nr_objects))                \
+                            {                                                 \
+                                element_array[element_count].key_start = 0;   \
+                                element_array[element_count].key_end = 0;     \
+                                element_array[element_count].value_start = 0; \
+                                element_array[element_count].value_end = 0;   \
+                            }                                                 \
+                        }                                                     \
                     } while (0)
 
 #define SET_KEY_DATA(pos, temp_pos) do {                                                                        \
@@ -203,7 +210,10 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
     char expect_new = 1;
     size_t element_count = 0;
 
-    RESET_NEXT;
+    element_array[element_count].key_start = 0; 
+    element_array[element_count].key_end = 0;
+    element_array[element_count].value_start = 0;
+    element_array[element_count].value_end = 0;
 
     while (pos < len)
     {
@@ -257,43 +267,43 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
             }
             if (!error)
             {
-                char type;
+                short type;
                 do
                 {
                     size_t temp_pos = element_count - (++backwards_count);
-                    type = element_array[element_count - backwards_count].type;
-                    switch (type) {
-                    case _OBJECT_START:
-                        --object_level;
-                        break;
-                    case _OBJECT_END:
-                        ++object_level;
-                        break;
-                    case _ARRAY_START:
-                        --array_level;
-                        break;
-                    case _ARRAY_END:
-                        ++array_level;
-                        break;
-                    }
-                    if (backwards_count == 0) 
+                    if (temp_pos < 0)
                     {
                         break;
                     }
-                } while ((object_level != 0 && array_level != 0) && (type != _OBJECT_START && type != _ARRAY_START));
+                    type = element_array[temp_pos].type;
+                    switch (type) {
+                    case JSONMAN_OBJECT:
+                        --object_level;
+                        break;
+                    case JSONMAN_OBJECT_END:
+                        ++object_level;
+                        break;
+                    case JSONMAN_ARRAY:
+                        --array_level;
+                        break;
+                    case JSONMAN_ARRAY_END:
+                        ++array_level;
+                        break;
+                    }
+                } while ((object_level != 0 || array_level != 0) && (type != JSONMAN_OBJECT || type != JSONMAN_ARRAY));
 
-                if (type == _OBJECT_START && json[pos] != _OBJECT_END)
+                if (type == JSONMAN_OBJECT && json[pos] != _OBJECT_END)
                 {
                     error = 1;
                 }
-                else if (type == _ARRAY_START && json[pos] != _ARRAY_END)
+                else if (type == JSONMAN_ARRAY && json[pos] != _ARRAY_END)
                 {
                     error = 1;
                 }
             }
             if (error)
             {
-                jsonman_last_error = JSONMAN_ERROR_INVALID_INPUT; 
+                jsonman_last_error = JSONMAN_ERROR_INVALID_INPUT;
                 jsonman_error_pos = pos;
                 return;
             }
@@ -304,7 +314,6 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
         case _OBJECT_START:
         {
             element_array[element_count].type = JSONMAN_OBJECT;
-            ++element_count;
             RESET_NEXT;
             ++pos;
             expect_new = 1;
@@ -314,11 +323,7 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
         case _OBJECT_END:
         {
             element_array[element_count].type = JSONMAN_OBJECT_END;
-            ++element_count;
-            if (element_count < (*nr_objects))
-            {
-                RESET_NEXT;
-            }
+            RESET_NEXT;
             ++pos;
             expect_new = 1;
             stack[stackpos--] = 0;
@@ -331,7 +336,6 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
         case _ARRAY_START:
         {
             element_array[element_count].type = JSONMAN_ARRAY;
-            ++element_count;
             RESET_NEXT;
             ++pos;
             expect_new = 1;
@@ -341,11 +345,7 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
         case _ARRAY_END:
         {
             element_array[element_count].type = JSONMAN_ARRAY_END;
-            ++element_count;
-            if (element_count < (*nr_objects))
-            {
-                RESET_NEXT;
-            }
+            RESET_NEXT;
             ++pos;
             expect_new = 1;
             stack[stackpos--] = 0;
@@ -407,37 +407,22 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
                             stack[++stackpos] = JSONMAN_UNQUOTED_VALUE;
                             increment_element_count = 0;
                         }
-
                         SET_KEY_DATA(pos, temp_pos);
-                        /*
-                        size_t length = element_array[element_count].key_end - element_array[element_count].key_start;
-                        for (int i = 0; i < length; i++)
-                        {
-                            value_array[value_array_pos++] = json[pos + i];
-                        }
-                        element_array[element_count].key_start = pos;
-                        element_array[element_count].key_end = temp_pos - 1;
-                        */
                     }
                     else if (stack[stackpos] == JSONMAN_ARRAY) //Array value
                     {
                         element_array[element_count].type = JSONMAN_STRING;
                         SET_VALUE_DATA(pos, temp_pos);
-                        //element_array[element_count].value_start = pos;
-                        //element_array[element_count].value_end = temp_pos - 1;
                     }
                     else //new key / value pair add to stack
                     {
                         element_array[element_count].type = JSONMAN_STRING;
                         SET_KEY_DATA(pos, temp_pos);
-                        //element_array[element_count].key_start = pos;
-                        //element_array[element_count].key_end = temp_pos - 1;
                         stack[++stackpos] = JSONMAN_STRING;
                         increment_element_count = 0;
                     }
                     if (increment_element_count)
                     {
-                        ++element_count;
                         RESET_NEXT;
                     }
                 }
@@ -445,11 +430,8 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
                 {
                     element_array[element_count].type = JSONMAN_STRING;
                     SET_VALUE_DATA(pos, temp_pos);
-                    //element_array[element_count].value_start = pos;
-                    //element_array[element_count].value_end = temp_pos - 1;
                     stack[stackpos--] = 0;
 
-                    ++element_count;
                     RESET_NEXT;
 
                     size_t next_char_at = temp_pos;
@@ -512,7 +494,7 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
                         ++next_char_at;
                     }
 
-                    if (json[next_char_at] == _COLON)  //Named object / array
+                    if (json[next_char_at] == _COLON)  //Named object / array (or unquoted key if allowed)
                     {
                         ++next_char_at;
                         while (next_char_at < len && isspace(json[next_char_at])) {
@@ -522,23 +504,30 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
                         {
                             element_array[element_count].type = JSONMAN_NAMED_OBJECT;
                             stack[++stackpos] = JSONMAN_NAMED_OBJECT;
+                            RESET_NEXT;
                         }
                         else if (json[next_char_at] == _ARRAY_START)
                         {
                             element_array[element_count].type = JSONMAN_NAMED_ARRAY;
                             stack[++stackpos] = JSONMAN_NAMED_ARRAY;
+                            RESET_NEXT;
                         }
+#ifdef ALLOW_UNQUOTED_JSON_KEYS
+                        else
+                        {
+                            SET_KEY_DATA(pos, temp_pos);
+                            stack[++stackpos] = JSONMAN_UNQUOTED_VALUE;  //unquoted key
+                        }
+#else
                         else
                         {
                             jsonman_last_error = JSONMAN_ERROR_INVALID_INPUT;
                             jsonman_error_pos = next_char_at;
                             return;
                         }
-                        SET_KEY_DATA(pos, temp_pos);
-                        //element_array[element_count].key_start = pos;
-                        //element_array[element_count].key_end = temp_pos - 1;
+#endif // ALLOW_UNQUOTED_JSON_KEYS
                     }
-                    else if (stack[stackpos] == JSONMAN_ARRAY)//Array value
+                    else if (stack[stackpos] == JSONMAN_ARRAY) //Array value
                     {
                         if (type == JSONMAN_UNQUOTED_VALUE)
                         {
@@ -548,28 +537,21 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
                         }
                         element_array[element_count].type = type;
                         SET_VALUE_DATA(pos, temp_pos);
-                        //element_array[element_count].value_start = pos;
-                        //element_array[element_count].value_end = temp_pos - 1;
+                        RESET_NEXT;
+
                     }
                     else { //new key / value pair add to stack
                         element_array[element_count].type = type;
                         SET_KEY_DATA(pos, temp_pos);
-                        //element_array[element_count].key_start = pos;
-                        //element_array[element_count].key_end = temp_pos - 1;
                         stack[++stackpos] = JSONMAN_UNQUOTED_VALUE;
+                        RESET_NEXT;
                     }
-                    ++element_count;
-                    RESET_NEXT;
                 }
                 else if (!expect_new) //Number or boolean value, add value and pop from stack
                 {
                     element_array[element_count].type = type;
                     SET_VALUE_DATA(pos, temp_pos);
-                    element_array[element_count].value_start = pos;
-                    element_array[element_count].value_end = temp_pos - 1;
                     stack[stackpos--] = 0;
-
-                    ++element_count;
                     RESET_NEXT;
 
                     size_t next_char_at = temp_pos;
@@ -687,7 +669,6 @@ int jsonman_parse(char* json)
 {
 
 #ifdef JSONMAN_TEST
-    printf("Test is defined\n");
     MALLOCS = 0;
     FREES = 0;
 #endif // JSONMAN_TEST
