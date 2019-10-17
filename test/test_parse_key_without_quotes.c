@@ -1,12 +1,14 @@
 #include "test.h"
 
+#define ALLOW_UNQUOTED_JSON_KEYS
+
 int main()
 {
     /*
      * Testing with one string
      */
     char* one_string = "{                            \
-                            \"key1\" : \"value1\"    \
+                            key1 : \"value1\"    \
                         }";
 
     jsonman_parse(one_string);
@@ -39,8 +41,8 @@ int main()
      * Testing with two strings
      */
     char* two_strings = "{                            \
-                            \"key1\" : \"value1\",    \
-                            \"key2\" : \"value2\"     \
+                            key1 : \"value1\",    \
+                            key2 : \"value2\"     \
                          }";
 
     jsonman_parse(two_strings);
@@ -73,6 +75,7 @@ int main()
     jsonman_free();
     MEM_ALLOC_CHECK;
 
+    OK;
     return 0;
 }
 
