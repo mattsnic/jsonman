@@ -37,6 +37,29 @@
 
 #define ASSERT_STRING_EQUALS(expected, actual) if (strcmp(expected, actual) != 0) ERROR_AND_RETURN
 
+#define ASSERT_KEY(id, expected_length, expected_value) do {                                             \
+                                                            size_t key_length;                           \
+                                                            get_key_length(id, &key_length);             \
+                                                            ASSERT_EQUALS(expected_length, key_length);  \
+                                                                                                         \
+                                                            char key[key_length + 1];                    \
+                                                            key[key_length] = '\0';                      \
+                                                            get_key(id, key);                            \
+                                                            ASSERT_STRING_EQUALS(expected_value, key);   \
+                                                        } while (0)
+
+
+#define ASSERT_VALUE(id, expected_length, expected_value) do {                                                 \
+                                                                size_t value_length;                           \
+                                                                get_value_length(id, &value_length);           \
+                                                                ASSERT_EQUALS(expected_length, value_length);  \
+                                                                                                               \
+                                                                char value[value_length + 1];                  \
+                                                                value[value_length] = '\0';                    \
+                                                                get_value_as_string(id, value);                \
+                                                                ASSERT_STRING_EQUALS(expected_value, value);   \
+                                                            } while (0)
+
 #define OK printf("OK\n"); return 0
 
 

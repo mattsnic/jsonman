@@ -32,6 +32,9 @@ int main()
         id = next_id(id);
     } while (id > 0);
 
+    ASSERT_KEY(1, 4, "key1");
+    ASSERT_VALUE(1, 8, "\"value1\"");
+
     jsonman_free();
     MEM_ALLOC_CHECK;
 
@@ -69,6 +72,11 @@ int main()
         id = next_id(id);
     } while (id > 0);
 
+    ASSERT_KEY(1, 4, "key1");
+    ASSERT_VALUE(1, 8, "\"value1\"");
+
+    ASSERT_KEY(2, 4, "key2");
+    ASSERT_VALUE(2, 8, "\"value2\"");
 
     jsonman_free();
     MEM_ALLOC_CHECK;
