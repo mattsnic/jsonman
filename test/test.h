@@ -1,5 +1,14 @@
 #include "../src/jsonman.h"
 
+#define LOG(m) do                                                                         \
+              {                                                                           \
+                FILE* f;                                                                  \
+                fopen_s(&f, "./test_logs.txt", "a");                                      \
+                fprintf(f, "%s\n", m);                                                    \
+                fflush(f);                                                                \
+                fclose(f);                                                                \
+              } while(0)       
+
 #define ERROR do                                                                          \
               {                                                                           \
                 FILE* f;                                                                  \
@@ -28,6 +37,6 @@
 
 #define ASSERT_STRING_EQUALS(expected, actual) if (strcmp(expected, actual) != 0) ERROR_AND_RETURN
 
-#define OK printf("OK\n")
+#define OK printf("OK\n"); return 0
 
 

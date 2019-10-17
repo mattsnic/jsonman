@@ -74,6 +74,5 @@ int main()
     MEM_ALLOC_CHECK;
 
     OK;
-    return 0;
 }
 

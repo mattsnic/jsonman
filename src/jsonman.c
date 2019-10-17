@@ -58,9 +58,9 @@ const char JSONMAN_NUMBER = 4;
 const char JSONMAN_BOOLEAN = 5;
 const char JSONMAN_NAMED_OBJECT = 6;
 const char JSONMAN_NAMED_ARRAY = 7;
-const char JSONMAN_OBJECT_END = 9;
-const char JSONMAN_ARRAY_END = 10;
-const char JSONMAN_UNQUOTED_VALUE = 11;
+const char JSONMAN_OBJECT_END = 8;
+const char JSONMAN_ARRAY_END = 9;
+const char JSONMAN_UNQUOTED_VALUE = 10;
 
 
 #ifdef _WIN32
@@ -766,7 +766,7 @@ int get_value_as_string(int id, char* out_buffer)
         return -1;
     }
 
-    size_t size = element_array[id].value_end - element_array[id].value_start;
+    size_t size = (1 + element_array[id].value_end) - element_array[id].value_start;
     if (size > 0)
     {
         int count = 0;

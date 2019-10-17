@@ -1,13 +1,11 @@
 #include "test.h"
 
-#define ALLOW_UNQUOTED_JSON_KEYS
-
 int main()
 {
     /*
      * Testing with one string
      */
-    char* one_string = "{                            \
+    char* one_string = "{                        \
                             key1 : \"value1\"    \
                         }";
 
@@ -76,6 +74,5 @@ int main()
     MEM_ALLOC_CHECK;
 
     OK;
-    return 0;
 }
 
