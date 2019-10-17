@@ -333,13 +333,13 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
         default:
         {
             size_t temp_pos = pos;
-            if (json[temp_pos] == '\"')  //Quoted key or value
+            if (json[temp_pos] == JM_DOUBLE_QUOTE)  //Quoted key or value
             {
                 ++temp_pos;
                 int found = 0;
                 while (!found)
                 {
-                    if (json[temp_pos] == '\"' && json[temp_pos - 1] != '\\')
+                    if (json[temp_pos] == JM_DOUBLE_QUOTE && json[temp_pos - 1] != JM_BACKSLASH)
                     {
                         found = 1;
                     }
@@ -595,13 +595,13 @@ static void init_parse(char* json, size_t* nr_objects, size_t* values_size)
                 ++(*nr_objects);
             }
             size_t temp_pos = pos;
-            if (json[temp_pos] == '\"')
+            if (json[temp_pos] == JM_DOUBLE_QUOTE)
             {
                 ++temp_pos;
                 int found = 0;
                 while (!found)
                 {
-                    if (json[temp_pos] == '\"' && json[temp_pos - 1] != '\\')
+                    if (json[temp_pos] == JM_DOUBLE_QUOTE && json[temp_pos - 1] != JM_BACKSLASH)
                     {
                         found = 1;
                     }
