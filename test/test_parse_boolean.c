@@ -73,6 +73,7 @@ int main()
     jsonman_free();
     MEM_ALLOC_CHECK;
 
+    OK;
     return 0;
 }
 
