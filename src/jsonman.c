@@ -15,7 +15,7 @@
                             if (element_count < (*nr_objects))                  \
                             {                                                   \
                                 element_array[element_count].type        = 0;   \
-                                element_array[element_count].level       = -1;  \
+                                element_array[element_count].level       = 0;  \
                                 element_array[element_count].key_start   = 0;   \
                                 element_array[element_count].key_end     = 0;   \
                                 element_array[element_count].value_start = 0;   \
@@ -189,7 +189,7 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
     size_t element_count = 0;
 
     element_array[element_count].type = 0;
-    element_array[element_count].level = -1;
+    element_array[element_count].level = 0;
     element_array[element_count].key_start = 0;
     element_array[element_count].key_end = 0;
     element_array[element_count].value_start = 0;
@@ -229,57 +229,63 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
         case JM_CURLY_BRACKET_START:
         {
             element_array[element_count].type = JM_OBJECT;
+            stack[++stackpos] = JM_OBJECT;
+            if (stackpos > 0)
+            {
+                if (stack[stackpos - 1] != JM_NAMED_OBJECT)
+                {
+                    element_array[element_count].level = stackpos;
+                }
+                else
+                {
+                    element_array[element_count].level = stackpos - 1;
+                }
+            }
             RESET_NEXT;
             ++pos;
-            stack[++stackpos] = JM_OBJECT;
-            if (stack[stackpos - 1] != JM_NAMED_OBJECT)
-            {
-                element_array[element_count].level = stackpos;
-            }
-            else 
-            {
-                element_array[element_count].level = stackpos - 1;
-            }
             break;
         }
         case JM_CURLY_BRACKET_END:
         {
             element_array[element_count].type = JM_OBJECT_END;
-            RESET_NEXT;
-            ++pos;
             stack[stackpos--] = 0;
             if (stack[stackpos] == JM_NAMED_OBJECT)
             {
                 stack[stackpos--] = 0;
             }
+            RESET_NEXT;
+            ++pos;
             break;
         }
         case JM_SQUARE_BRACKET_START:
         {
             element_array[element_count].type = JM_ARRAY;
+            stack[++stackpos] = JM_ARRAY;
+            if (stackpos > 0)
+            {
+                if (stack[stackpos - 1] != JM_NAMED_ARRAY)
+                {
+                    element_array[element_count].level = stackpos;
+                }
+                else
+                {
+                    element_array[element_count].level = stackpos - 1;
+                }
+            }
             RESET_NEXT;
             ++pos;
-            stack[++stackpos] = JM_ARRAY;
-            if (stack[stackpos - 1] != JM_NAMED_ARRAY)
-            {
-                element_array[element_count].level = stackpos;
-            }
-            else
-            {
-                element_array[element_count].level = stackpos - 1;
-            }
             break;
         }
         case JM_SQUARE_BRACKET_END:
         {
             element_array[element_count].type = JM_ARRAY_END;
-            RESET_NEXT;
-            ++pos;
             stack[stackpos--] = 0;
             if (stack[stackpos] == JM_NAMED_ARRAY)
             {
                 stack[stackpos--] = 0;
             }
+            RESET_NEXT;
+            ++pos;
             break;
         }
         default:
@@ -530,14 +536,14 @@ static void init_parse(char* json, size_t* nr_objects, size_t* values_size)
     nr_objects_store = *nr_objects;
 }
 
-static int find_unnamed_element(const char* type, int* from_id, int* level)
+static int find_unnamed_element(const char type, int* from_id, int* level)
 {
     if (!element_array || nr_objects_store <= 0)
     {
         jm_last_error = JM_ERROR_NO_DATA;
         return -1;
     }
-    int id = *from_id >= 0 ? *from_id : 0;
+    int id = *from_id < 0 ? 0 : *from_id;
     if (id >= nr_objects_store)
     {
         jm_last_error = JM_ERROR_INVALID_ID;
@@ -546,13 +552,13 @@ static int find_unnamed_element(const char* type, int* from_id, int* level)
 
     for (int i = id; i < nr_objects_store; i++)
     {
-        if (element_array[i].type == *type)
+        if (element_array[i].type == type)
         {
-            if (level >= 0 && element_array[i].level == *level)
+            if (*level >= 0 && element_array[i].level == *level)
             {
                 return i;
             }
-            else if (level < 0)
+            else if (*level < 0)
             {
                 return i;
             }
@@ -562,14 +568,14 @@ static int find_unnamed_element(const char* type, int* from_id, int* level)
     return -1;
 }
 
-static int find_named_element(const char* type, int* from_id, int* level, char* key_in, char* value_in)
+static int find_named_element(const char type, int* from_id, int* level, char* key_in, char* value_in)
 {
     if (!element_array || nr_objects_store <= 0)
     {
         jm_last_error = JM_ERROR_NO_DATA;
         return -1;
     }
-    int id = *from_id >= 0 ? *from_id : 0;
+    int id = *from_id < 0 ? 0 : *from_id;
     if (id >= nr_objects_store)
     {
         jm_last_error = JM_ERROR_INVALID_ID;
@@ -578,11 +584,11 @@ static int find_named_element(const char* type, int* from_id, int* level, char* 
 
     for (int i = id; i < nr_objects_store; i++)
     {
-        if (element_array[i].type == *type)
+        if (element_array[i].type == type)
         {
-            if (level >= 0)
+            if (*level >= 0)
             {
-                if (*type == JM_NAMED_OBJECT || *type == JM_NAMED_ARRAY)
+                if (type == JM_NAMED_OBJECT || type == JM_NAMED_ARRAY)  //level is stored on these, but not on simple types
                 {
                     if (*level != element_array[i].level)
                     {
@@ -593,10 +599,11 @@ static int find_named_element(const char* type, int* from_id, int* level, char* 
                 else
                 {
                     //Find parent structure
-                    int count = (i - 1);
+                    int count = i;
                     int temp_level = 0;
-                    while (element_array[count].type != JM_OBJECT && element_array[count].type != JM_ARRAY && temp_level != 0)
+                    do 
                     {
+                        --count;
                         if (element_array[count].type == JM_OBJECT_END || element_array[count].type == JM_ARRAY_END)
                         {
                             temp_level++;
@@ -605,8 +612,8 @@ static int find_named_element(const char* type, int* from_id, int* level, char* 
                         {
                             temp_level--;
                         }
-                        --count;
-                    }
+                    } while ((element_array[count].type != JM_OBJECT && element_array[count].type != JM_ARRAY) || temp_level != -1);
+
                     if (element_array[count].level != *level)
                     {
                         continue;
@@ -616,7 +623,7 @@ static int find_named_element(const char* type, int* from_id, int* level, char* 
             int match = 1;
             if (key_in)
             {
-                size_t key_length = element_array[i].key_end - element_array[i].key_start;
+                size_t key_length = (1 + element_array[i].key_end) - element_array[i].key_start;
                 if (strlen(key_in) != key_length)
                 {
                     match = 0;
@@ -634,7 +641,7 @@ static int find_named_element(const char* type, int* from_id, int* level, char* 
             }
             if (value_in && match)
             {
-                size_t value_length = element_array[i].value_end - element_array[i].value_start;
+                size_t value_length = (1 + element_array[i].value_end) - element_array[i].value_start;
                 if (strlen(value_in) != value_length)
                 {
                     match = 0;
@@ -804,31 +811,31 @@ int jm_get_value_as_string(int id, char* out_buffer)
 int jm_find_next_object(int from_id, int level)
 {
     NO_ERROR;
-    return find_unnamed_element(&JM_OBJECT, &from_id, &level);
+    return find_unnamed_element(JM_OBJECT, &from_id, &level);
 }
 
 int jm_find_next_named_object(int from_id, int level, char* name)
 {
     NO_ERROR;
-    return find_named_element(&JM_NAMED_OBJECT, &from_id, &level, name, NULL);
+    return find_named_element(JM_NAMED_OBJECT, &from_id, &level, name, NULL);
 }
 
 int jm_find_next_array(int from_id, int level)
 {
     NO_ERROR;
-    return find_unnamed_element(&JM_ARRAY, &from_id, &level);
+    return find_unnamed_element(JM_ARRAY, &from_id, &level);
 }
 
 int jm_find_next_named_array(int from_id, int level, char* name)
 {
     NO_ERROR;
-    return find_named_element(&JM_NAMED_ARRAY, &from_id, &level, name, NULL);
+    return find_named_element(JM_NAMED_ARRAY, &from_id, &level, name, NULL);
 }
 
 int jm_find_next_number(int from_id, int level, char* name, char* value)
 {
     NO_ERROR;
-    return find_named_element(&JM_NUMBER, &from_id, &level, name, value);
+    return find_named_element(JM_NUMBER, &from_id, &level, name, value);
 }
 
 int jm_find_next_boolean(int from_id, int level, char* name, int* value)
@@ -838,20 +845,20 @@ int jm_find_next_boolean(int from_id, int level, char* name, int* value)
     {
         if (*value)
         {
-            return find_named_element(&JM_BOOLEAN, &from_id, &level, name, "true");
+            return find_named_element(JM_BOOLEAN, &from_id, &level, name, "true");
         }
         else
         {
-            return find_named_element(&JM_BOOLEAN, &from_id, &level, name, "false");
+            return find_named_element(JM_BOOLEAN, &from_id, &level, name, "false");
         }
     }
-    return find_named_element(&JM_BOOLEAN, &from_id, &level, name, NULL);
+    return find_named_element(JM_BOOLEAN, &from_id, &level, name, NULL);
 }
 
 int jm_find_next_string(int from_id, int level, char* name, char* value)
 {
     NO_ERROR;
-    return find_named_element(&JM_STRING, &from_id, &level, name, value);
+    return find_named_element(JM_STRING, &from_id, &level, name, value);
 }
 
 
