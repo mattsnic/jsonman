@@ -4,7 +4,6 @@
 #ifndef JSONMAN_H
 #define JSONMAN_H
 
-#define log(m) printf("%s\n", m)
 #define STACK_SIZE 100
 
 #include <stdio.h>
@@ -38,13 +37,14 @@ extern "C" {
      */
     typedef enum {
         JM_NO_ERROR = 0,
-        JM_ERROR_INVALID_INPUT = 1,
-        JM_ERROR_MEM_ALLOC = 2,
-        JM_ERROR_NO_DATA = 3,
-        JM_ERROR_STACK_OVERFLOW = 4,
-        JM_ERROR_INVALID_ID = 5,
+        JM_ERROR_INVALID_INPUT            = 1,
+        JM_ERROR_MEM_ALLOC                = 2,
+        JM_ERROR_NO_DATA                  = 3,
+        JM_ERROR_STACK_OVERFLOW           = 4,
+        JM_ERROR_INVALID_ID               = 5,
         JM_ERROR_SIMPLE_VALUE_NOT_PRESENT = 6,
-        JM_ERROR_OUT_PARAMETER_IS_NULL = 7
+        JM_ERROR_OUT_PARAMETER_IS_NULL    = 7,
+        JM_ERROR_ELEMENT_NOT_FOUND        = 8
     } jm_error_t;
 
     /**
@@ -135,6 +135,14 @@ extern "C" {
      * Returns zero on success and non-zero on failure. Call function jm_get_last_error() for reason.
      */
     int jm_get_value_as_string(int id, char* out_buffer);
+
+    int jm_find_next_object(int from_id, int level);
+    int jm_find_next_named_object(int from_id, int level, char* name);
+    int jm_find_next_array(int from_id, int level);
+    int jm_find_next_named_array(int from_id, int level, char* name);
+    int jm_find_next_number(int from_id, int level, char* name, char* value);
+    int jm_find_next_boolean(int from_id, int level, char* name, int* value);
+    int jm_find_next_string(int from_id, int level, char* name, char* value);
 
     /**
      * Serialize a Json-structure to a string.
