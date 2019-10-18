@@ -532,7 +532,6 @@ static void init_parse(char* json, size_t* nr_objects, size_t* values_size)
 
 static int find_unnamed_element(const char* type, int* from_id, int* level)
 {
-    NO_ERROR;
     if (!element_array || nr_objects_store <= 0)
     {
         jm_last_error = JM_ERROR_NO_DATA;
@@ -565,7 +564,6 @@ static int find_unnamed_element(const char* type, int* from_id, int* level)
 
 static int find_named_element(const char* type, int* from_id, int* level, char* key_in, char* value_in)
 {
-    NO_ERROR;
     if (!element_array || nr_objects_store <= 0)
     {
         jm_last_error = JM_ERROR_NO_DATA;
@@ -667,6 +665,7 @@ static int find_named_element(const char* type, int* from_id, int* level, char* 
 
 void jm_free()
 {
+    NO_ERROR;
     if (value_array)
     {
         free_value(value_array);
@@ -804,31 +803,37 @@ int jm_get_value_as_string(int id, char* out_buffer)
 
 int jm_find_next_object(int from_id, int level)
 {
+    NO_ERROR;
     return find_unnamed_element(&JM_OBJECT, &from_id, &level);
 }
 
 int jm_find_next_named_object(int from_id, int level, char* name)
 {
+    NO_ERROR;
     return find_named_element(&JM_NAMED_OBJECT, &from_id, &level, name, NULL);
 }
 
 int jm_find_next_array(int from_id, int level)
 {
+    NO_ERROR;
     return find_unnamed_element(&JM_ARRAY, &from_id, &level);
 }
 
 int jm_find_next_named_array(int from_id, int level, char* name)
 {
+    NO_ERROR;
     return find_named_element(&JM_NAMED_ARRAY, &from_id, &level, name, NULL);
 }
 
 int jm_find_next_number(int from_id, int level, char* name, char* value)
 {
+    NO_ERROR;
     return find_named_element(&JM_NUMBER, &from_id, &level, name, value);
 }
 
 int jm_find_next_boolean(int from_id, int level, char* name, int* value)
 {
+    NO_ERROR;
     if (value)
     {
         if (*value)
@@ -845,18 +850,21 @@ int jm_find_next_boolean(int from_id, int level, char* name, int* value)
 
 int jm_find_next_string(int from_id, int level, char* name, char* value)
 {
+    NO_ERROR;
     return find_named_element(&JM_STRING, &from_id, &level, name, value);
 }
 
 
 uint jm_new()
 {
+    NO_ERROR;
     return jm_last_error = JM_NO_ERROR;
 }
 
 
 int jm_next_id(int id)
 {
+    NO_ERROR;
     if (element_array)
     {
         if (id < 0)
@@ -874,6 +882,7 @@ int jm_next_id(int id)
 
 short jm_get_type(int id)
 {
+    NO_ERROR;
     if (element_array)
     {
         if (nr_objects_store >= id)
@@ -886,15 +895,17 @@ short jm_get_type(int id)
 
 static void calculate_size(jm_element_t* element, uint* output_size, jm_format_t* type, uint* level)
 {
+    NO_ERROR;
 }
 
 static void serialize(jm_element_t* element, char* output, jm_format_t* type, uint* level)
 {
+    NO_ERROR;
 }
 
 char* jm_serialize(jm_element_t* root_element, jm_format_t print_type, uint* output_size)
 {
-    jm_last_error = JM_NO_ERROR;
+    NO_ERROR;
 
     jm_element_t* structure = NULL;
     jm_format_t type;
