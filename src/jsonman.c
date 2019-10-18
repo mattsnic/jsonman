@@ -6,18 +6,20 @@
 
 #include "jsonman.h"
 
-#define RESET_NEXT  do {                                                      \
-                        if (element_count < (*nr_objects))                    \
-                        {                                                     \
-                            ++element_count;                                  \
-                            if (element_count < (*nr_objects))                \
-                            {                                                 \
-                                element_array[element_count].key_start = 0;   \
-                                element_array[element_count].key_end = 0;     \
-                                element_array[element_count].value_start = 0; \
-                                element_array[element_count].value_end = 0;   \
-                            }                                                 \
-                        }                                                     \
+#define RESET_NEXT  do {                                                        \
+                        if (element_count < (*nr_objects))                      \
+                        {                                                       \
+                            ++element_count;                                    \
+                            if (element_count < (*nr_objects))                  \
+                            {                                                   \
+                                element_array[element_count].type        = 0;   \
+                                element_array[element_count].level       = -1;  \
+                                element_array[element_count].key_start   = 0;   \
+                                element_array[element_count].key_end     = 0;   \
+                                element_array[element_count].value_start = 0;   \
+                                element_array[element_count].value_end   = 0;   \
+                            }                                                   \
+                        }                                                       \
                     } while (0)
 
 #define SET_KEY_DATA(pos, temp_pos) do {                                                                        \
@@ -182,10 +184,11 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
     size_t len = strlen(json);
     size_t pos = 0;
     size_t value_array_pos = 0;
-    char expect_new = 1;
     size_t element_count = 0;
 
-    element_array[element_count].key_start = 0; 
+    element_array[element_count].type = 0;
+    element_array[element_count].level = -1;
+    element_array[element_count].key_start = 0;
     element_array[element_count].key_end = 0;
     element_array[element_count].value_start = 0;
     element_array[element_count].value_end = 0;
@@ -200,11 +203,11 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
             jm_last_error = JM_ERROR_STACK_OVERFLOW;
             return;
         }
+
         if (json[pos] == JM_COLON)  //between key and value
         {
             ++pos;
             while (isspace(json[pos])) ++pos;
-            expect_new = 0;
         }
         else if (json[pos] == JM_COMMA)  //end of value
         {
@@ -217,71 +220,6 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
                 jm_error_pos = pos;
                 return;
             }
-            expect_new = 1;
-        }
-        else if (pos > 0 && !expect_new)
-        {
-            //Find latest start element for structure (object or array)
-            size_t backwards_count = 0;
-            char error = 0;
-            int object_level = 1;
-            int array_level = 1;
-            if (json[pos] != JM_CURLY_BRACKET_END && json[pos] != JM_SQUARE_BRACKET_END)
-            {
-                error = 1;
-            }
-            else if (json[pos] == JM_CURLY_BRACKET_END)
-            {
-                object_level = 1;
-                array_level = 0;
-            }
-            else if (json[pos] == JM_SQUARE_BRACKET_END)
-            {
-                object_level = 0;
-                array_level = 1;
-            }
-            if (!error)
-            {
-                short type;
-                do
-                {
-                    size_t temp_pos = element_count - (++backwards_count);
-                    if (temp_pos < 0)
-                    {
-                        break;
-                    }
-                    type = element_array[temp_pos].type;
-                    switch (type) {
-                    case JM_OBJECT:
-                        --object_level;
-                        break;
-                    case JM_OBJECT_END:
-                        ++object_level;
-                        break;
-                    case JM_ARRAY:
-                        --array_level;
-                        break;
-                    case JM_ARRAY_END:
-                        ++array_level;
-                        break;
-                    }
-                } while ((object_level != 0 || array_level != 0) && (type != JM_OBJECT || type != JM_ARRAY));
-
-                if (type == JM_OBJECT && json[pos] != JM_CURLY_BRACKET_END)
-                {
-                    error = 1;
-                }
-                else if (type == JM_ARRAY && json[pos] != JM_SQUARE_BRACKET_END)
-                {
-                    error = 1;
-                }
-            }
-            if (error)
-            {
-                jm_last_error = JM_ERROR_INVALID_INPUT;
-                jm_error_pos = pos;
-                return;
-            }
         }
 
         switch (json[pos])
@@ -291,8 +229,15 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
             element_array[element_count].type = JM_OBJECT;
             RESET_NEXT;
             ++pos;
-            expect_new = 1;
             stack[++stackpos] = JM_OBJECT;
+            if (stack[stackpos - 1] != JM_NAMED_OBJECT)
+            {
+                element_array[element_count].level = stackpos;
+            }
+            else 
+            {
+                element_array[element_count].level = stackpos - 1;
+            }
             break;
         }
         case JM_CURLY_BRACKET_END:
@@ -300,7 +245,6 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
             element_array[element_count].type = JM_OBJECT_END;
             RESET_NEXT;
             ++pos;
-            expect_new = 1;
             stack[stackpos--] = 0;
             if (stack[stackpos] == JM_NAMED_OBJECT)
             {
@@ -313,8 +257,15 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
             element_array[element_count].type = JM_ARRAY;
             RESET_NEXT;
             ++pos;
-            expect_new = 1;
             stack[++stackpos] = JM_ARRAY;
+            if (stack[stackpos - 1] != JM_NAMED_ARRAY)
+            {
+                element_array[element_count].level = stackpos;
+            }
+            else
+            {
+                element_array[element_count].level = stackpos - 1;
+            }
             break;
         }
         case JM_SQUARE_BRACKET_END:
@@ -322,7 +273,6 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
             element_array[element_count].type = JM_ARRAY_END;
             RESET_NEXT;
             ++pos;
-            expect_new = 1;
             stack[stackpos--] = 0;
             if (stack[stackpos] == JM_NAMED_ARRAY)
             {
@@ -346,89 +296,66 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
                     ++temp_pos;
                 }
 
-                if (stack[stackpos] == JM_OBJECT || stack[stackpos] == JM_ARRAY)
+                int is_key = 0;
+                char value_type_if_key = 0;
+                size_t next_char_at = temp_pos;
+                while (next_char_at < len && isspace(json[next_char_at])) {
+                    ++next_char_at;
+                }
+
+                if (json[next_char_at] == JM_COLON)
                 {
-                    size_t next_char_at = temp_pos;
+                    is_key = 1;
+                    ++next_char_at;
                     while (next_char_at < len && isspace(json[next_char_at])) {
                         ++next_char_at;
                     }
-
-                    int increment_element_count = 1;
-                    if (json[next_char_at] == JM_COLON)  //Named object / array or beginning of key/value element
+                    switch (json[next_char_at])
                     {
-                        ++next_char_at;
-                        while (next_char_at < len && isspace(json[next_char_at])) {
-                            ++next_char_at;
-                        }
-                        if (json[next_char_at] == JM_CURLY_BRACKET_START)
-                        {
-                            element_array[element_count].type = JM_NAMED_OBJECT;
-                            stack[++stackpos] = JM_NAMED_OBJECT;
-                        }
-                        else if (json[next_char_at] == JM_SQUARE_BRACKET_START)
-                        {
-                            element_array[element_count].type = JM_NAMED_ARRAY;
-                            stack[++stackpos] = JM_NAMED_ARRAY;
-                        }
-                        else if (json[next_char_at] == JM_DOUBLE_QUOTE)
-                        {
-                            element_array[element_count].type = JM_STRING;
-                            stack[++stackpos] = JM_STRING;
-                            increment_element_count = 0;
-                        }
-                        else
-                        {
-                            element_array[element_count].type = JM_UNQUOTED_VALUE;
-                            stack[++stackpos] = JM_UNQUOTED_VALUE;
-                            increment_element_count = 0;
-                        }
-                        SET_KEY_DATA(pos, temp_pos);
-                    }
-                    else if (stack[stackpos] == JM_ARRAY) //Array value
-                    {
-                        element_array[element_count].type = JM_STRING;
-                        SET_VALUE_DATA(pos, temp_pos);
-                    }
-                    else //new key / value pair add to stack
-                    {
-                        element_array[element_count].type = JM_STRING;
-                        SET_KEY_DATA(pos, temp_pos);
-                        stack[++stackpos] = JM_STRING;
-                        increment_element_count = 0;
-                    }
-                    if (increment_element_count)
-                    {
-                        RESET_NEXT;
+                    case JM_DOUBLE_QUOTE:
+                        value_type_if_key = JM_STRING;
+                        break;
+                    case JM_CURLY_BRACKET_START:
+                        value_type_if_key = JM_NAMED_OBJECT;
+                        break;
+                    case JM_SQUARE_BRACKET_START:
+                        value_type_if_key = JM_NAMED_ARRAY;
+                        break;
+                    default:
+                        value_type_if_key = JM_UNQUOTED_VALUE;
                     }
                 }
-                else if (!expect_new) //String value, add value and pop from stack
+                else if (json[next_char_at] != JM_COMMA && json[next_char_at] != JM_CURLY_BRACKET_END && json[next_char_at] != JM_SQUARE_BRACKET_END)
                 {
-                    element_array[element_count].type = JM_STRING;
-                    SET_VALUE_DATA(pos, temp_pos);
-                    stack[stackpos--] = 0;
+                    jm_last_error = JM_ERROR_INVALID_INPUT;
+                    jm_error_pos = next_char_at;
+                    return;
+                }
 
-                    RESET_NEXT;
-
-                    size_t next_char_at = temp_pos;
-                    while (next_char_at < len && isspace(json[next_char_at])) {
-                        ++next_char_at;
-                    }
-                    if (json[next_char_at] != JM_COMMA && json[next_char_at] != JM_CURLY_BRACKET_END && json[next_char_at] != JM_SQUARE_BRACKET_END)
+                if (is_key)
+                {
+                    SET_KEY_DATA(pos, temp_pos);
+                    if (value_type_if_key == JM_NAMED_OBJECT || value_type_if_key == JM_NAMED_ARRAY)
                     {
-                        jm_last_error = JM_ERROR_INVALID_INPUT;
-                        jm_error_pos = next_char_at;
-                        return;
+                        stack[++stackpos] = value_type_if_key;
+                        element_array[element_count].type = value_type_if_key;
+                        element_array[element_count].level = stackpos;
+                        RESET_NEXT;
                     }
                 }
                 else
                 {
-                    printf("Error\n");
+                    SET_VALUE_DATA(pos, temp_pos);
+                    element_array[element_count].type = JM_STRING;
+                    RESET_NEXT;
                 }
             }
             else  //Unquoted string / value
             {
                 ++temp_pos;
                 int found = 0;
+                int is_key = 0;
+                char value_type_if_key = 0;
                 while (!found)
                 {
                     if (json[temp_pos] == JM_COLON
@@ -436,6 +363,28 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
                         || json[temp_pos] == JM_CURLY_BRACKET_END
                         || json[temp_pos] == JM_SQUARE_BRACKET_END)
                     {
+                        if (json[temp_pos] == JM_COLON)
+                        {
+                            is_key = 1;
+                            size_t next_char_at = temp_pos + 1;
+                            while (next_char_at < len && isspace(json[next_char_at])) {
+                                ++next_char_at;
+                            }
+                            switch (json[next_char_at])
+                            {
+                            case JM_DOUBLE_QUOTE:
+                                value_type_if_key = JM_STRING;
+                                break;
+                            case JM_CURLY_BRACKET_START:
+                                value_type_if_key = JM_NAMED_OBJECT;
+                                break;
+                            case JM_SQUARE_BRACKET_START:
+                                value_type_if_key = JM_NAMED_ARRAY;
+                                break;
+                            default:
+                                value_type_if_key = JM_UNQUOTED_VALUE;
+                            }
+                        }
                         found = 1;
                     }
                     else
@@ -448,108 +397,50 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
                     --temp_pos;
                 }
 
-                char type;
-                if (is_number(json, &pos, &temp_pos))
+                if (is_key)
                 {
-                    type = JM_NUMBER;
-                }
-                else if (is_boolean(json, &pos, &temp_pos))
-                {
-                    type = JM_BOOLEAN;
+#ifndef JM_ALLOW_UNQUOTED_JSON_KEYS
+                    jm_last_error = JM_ERROR_INVALID_INPUT;
+                    jm_error_pos = next_char_at;
+                    return;
+#endif
+                    SET_KEY_DATA(pos, temp_pos);
+                    if (value_type_if_key == JM_NAMED_OBJECT || value_type_if_key == JM_NAMED_ARRAY)
+                    {
+                        stack[++stackpos] = value_type_if_key;
+                        element_array[element_count].type = value_type_if_key;
+                        element_array[element_count].level = stackpos;
+                        RESET_NEXT;
+                    }
                 }
                 else
                 {
-                    type = JM_UNQUOTED_VALUE;
-                }
-
-                if (stack[stackpos] == JM_OBJECT || stack[stackpos] == JM_ARRAY) //Number or boolean array value, don't add to stack
-                {
-                    size_t next_char_at = temp_pos;
-                    while (next_char_at < len && isspace(json[next_char_at])) {
-                        ++next_char_at;
-                    }
-
-                    if (json[next_char_at] == JM_COLON)  //Named object / array (or unquoted key if allowed)
+                    if (is_number(json, &pos, &temp_pos))
                     {
-                        ++next_char_at;
-                        while (next_char_at < len && isspace(json[next_char_at])) {
-                            ++next_char_at;
-                        }
-                        if (json[next_char_at] == JM_CURLY_BRACKET_START)
-                        {
-                            element_array[element_count].type = JM_NAMED_OBJECT;
-                            stack[++stackpos] = JM_NAMED_OBJECT;
-                            RESET_NEXT;
-                        }
-                        else if (json[next_char_at] == JM_SQUARE_BRACKET_START)
-                        {
-                            element_array[element_count].type = JM_NAMED_ARRAY;
-                            stack[++stackpos] = JM_NAMED_ARRAY;
-                            RESET_NEXT;
-                        }
-#ifdef JM_ALLOW_UNQUOTED_JSON_KEYS
-                        else
-                        {
-                            SET_KEY_DATA(pos, temp_pos);
-                            stack[++stackpos] = JM_UNQUOTED_VALUE;  //unquoted key
-                        }
-#else
-                        else
-                        {
-                            jm_last_error = JM_ERROR_INVALID_INPUT;
-                            jm_error_pos = next_char_at;
-                            return;
-                        }
-#endif // JM_ALLOW_UNQUOTED_JSON_KEYS
+                        element_array[element_count].type = JM_NUMBER;
                     }
-                    else if (stack[stackpos] == JM_ARRAY) //Array value
+                    else if (is_boolean(json, &pos, &temp_pos))
                     {
-                        if (type == JM_UNQUOTED_VALUE)
-                        {
-                            jm_last_error = JM_ERROR_INVALID_INPUT;
-                            jm_error_pos = next_char_at;
-                            return;
-                        }
-                        element_array[element_count].type = type;
-                        SET_VALUE_DATA(pos, temp_pos);
-                        RESET_NEXT;
-
+                        element_array[element_count].type = JM_BOOLEAN;
                     }
-                    else { //new key / value pair add to stack
-                        element_array[element_count].type = type;
-                        SET_KEY_DATA(pos, temp_pos);
-                        stack[++stackpos] = JM_UNQUOTED_VALUE;
-                        RESET_NEXT;
+                    else
+                    {
+                        element_array[element_count].type = JM_UNQUOTED_VALUE;
                     }
-                }
-                else if (!expect_new) //Number or boolean value, add value and pop from stack
-                {
-                    element_array[element_count].type = type;
                     SET_VALUE_DATA(pos, temp_pos);
-                    stack[stackpos--] = 0;
+                    //stack[stackpos--] = 0;
                     RESET_NEXT;
-
-                    size_t next_char_at = temp_pos;
-                    while (next_char_at < len && isspace(json[next_char_at])) {
-                        ++next_char_at;
-                    }
-                    if (json[next_char_at] != JM_COMMA && json[next_char_at] != JM_CURLY_BRACKET_END && json[next_char_at] != JM_SQUARE_BRACKET_END)
-                    {
-                        jm_last_error = JM_ERROR_INVALID_INPUT;
-                        jm_error_pos = next_char_at;
-                        return;
-                    }
                 }
-                else
-                {
-                    printf("Error2\n");
-                }
-
             }
             size_t length = temp_pos - pos;
             pos += length;
         }
         }
+    }
+    if (stackpos != -1) 
+    {
+        jm_last_error = JM_ERROR_INVALID_INPUT;
+        jm_error_pos = -1;
     }
 }
 
