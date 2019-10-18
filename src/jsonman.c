@@ -536,7 +536,7 @@ static void init_parse(char* json, size_t* nr_objects, size_t* values_size)
     nr_objects_store = *nr_objects;
 }
 
-static int find_unnamed_element(const char type, int* from_id, int* level)
+static int find_unnamed_element(const char type, size_t* from_id, int* level)
 {
     if (!element_array || nr_objects_store <= 0)
     {
@@ -568,7 +568,7 @@ static int find_unnamed_element(const char type, int* from_id, int* level)
     return -1;
 }
 
-static int find_named_element(const char type, int* from_id, int* level, char* key_in, char* value_in)
+static int find_named_element(const char type, size_t* from_id, int* level, char* key_in, char* value_in)
 {
     if (!element_array || nr_objects_store <= 0)
     {
@@ -711,7 +711,7 @@ int jm_parse(char* json)
     return 0;
 }
 
-int jm_get_key_length(int id, size_t* out_value)
+int jm_get_key_length(size_t id, size_t* out_value)
 {
     NO_ERROR;
     if (!out_value)
@@ -728,7 +728,7 @@ int jm_get_key_length(int id, size_t* out_value)
     return 0;
 }
 
-int jm_get_value_length(int id, size_t* out_value)
+int jm_get_value_length(size_t id, size_t* out_value)
 {
     NO_ERROR;
     if (!out_value)
@@ -751,7 +751,7 @@ int jm_get_value_length(int id, size_t* out_value)
     return 0;
 }
 
-int jm_get_key(int id, char* out_buffer)
+int jm_get_key(size_t id, char* out_buffer)
 {
     NO_ERROR;
     if (!out_buffer)
@@ -776,7 +776,7 @@ int jm_get_key(int id, char* out_buffer)
     return 0;
 }
 
-int jm_get_value_as_string(int id, char* out_buffer)
+int jm_get_value_as_string(size_t id, char* out_buffer)
 {
     NO_ERROR;
     if (!out_buffer)
@@ -808,37 +808,37 @@ int jm_get_value_as_string(int id, char* out_buffer)
     return 0;
 }
 
-int jm_find_next_object(int from_id, int level)
+int jm_find_next_object(size_t from_id, int level)
 {
     NO_ERROR;
     return find_unnamed_element(JM_OBJECT, &from_id, &level);
 }
 
-int jm_find_next_named_object(int from_id, int level, char* name)
+int jm_find_next_named_object(size_t from_id, int level, char* name)
 {
     NO_ERROR;
     return find_named_element(JM_NAMED_OBJECT, &from_id, &level, name, NULL);
 }
 
-int jm_find_next_array(int from_id, int level)
+int jm_find_next_array(size_t from_id, int level)
 {
     NO_ERROR;
     return find_unnamed_element(JM_ARRAY, &from_id, &level);
 }
 
-int jm_find_next_named_array(int from_id, int level, char* name)
+int jm_find_next_named_array(size_t from_id, int level, char* name)
 {
     NO_ERROR;
     return find_named_element(JM_NAMED_ARRAY, &from_id, &level, name, NULL);
 }
 
-int jm_find_next_number(int from_id, int level, char* name, char* value)
+int jm_find_next_number(size_t from_id, int level, char* name, char* value)
 {
     NO_ERROR;
     return find_named_element(JM_NUMBER, &from_id, &level, name, value);
 }
 
-int jm_find_next_boolean(int from_id, int level, char* name, int* value)
+int jm_find_next_boolean(size_t from_id, int level, char* name, int* value)
 {
     NO_ERROR;
     if (value)
@@ -855,7 +855,7 @@ int jm_find_next_boolean(int from_id, int level, char* name, int* value)
     return find_named_element(JM_BOOLEAN, &from_id, &level, name, NULL);
 }
 
-int jm_find_next_string(int from_id, int level, char* name, char* value)
+int jm_find_next_string(size_t from_id, int level, char* name, char* value)
 {
     NO_ERROR;
     return find_named_element(JM_STRING, &from_id, &level, name, value);
@@ -900,22 +900,18 @@ short jm_get_type(int id)
     return -1;
 }
 
-static void calculate_size(jm_element_t* element, uint* output_size, jm_format_t* type, uint* level)
+int jm_calculate_size(size_t* output_size, jm_format_t* type)
 {
     NO_ERROR;
+    return 0;
 }
 
-static void serialize(jm_element_t* element, char* output, jm_format_t* type, uint* level)
-{
-    NO_ERROR;
-}
-
-char* jm_serialize(jm_element_t* root_element, jm_format_t print_type, uint* output_size)
+int jm_serialize(char* output, jm_format_t* type)
 {
     NO_ERROR;
 
+    /*
     jm_element_t* structure = NULL;
-    jm_format_t type;
     if (serialized_output)
     {
         free_value(serialized_output);
@@ -924,17 +920,18 @@ char* jm_serialize(jm_element_t* root_element, jm_format_t print_type, uint* out
 
     uint size = 0;
     uint level = 0;
-    calculate_size(structure, &size, &type, &level);
+    //jm_calculate_size(structure, &size, &type, &level);
     serialized_output = jm_malloc((size + 1) * sizeof(char));
     serialized_output[size] = '\0';
     level = 0;
-    serialize(structure, serialized_output, &type, &level);
+    //serialize(structure, serialized_output, &type, &level);
 
     if (output_size)
     {
         *output_size = size;
     }
-    return serialized_output;
+    */
+    return 0;
 }
 
 

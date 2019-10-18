@@ -4,13 +4,13 @@
 #ifndef JSONMAN_H
 #define JSONMAN_H
 
-#define STACK_SIZE 100
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>
+
+#define STACK_SIZE 100
 
 #ifdef __cplusplus
 extern "C" {
@@ -100,7 +100,7 @@ extern "C" {
     /**
      * Parse a Json string
      *
-     * Returns zero on success. If value is non-zero, call jm_get_last_error() to get the reason.
+     * Returns zero on success. If value is non-zero, call jm_get_last_error() for reason.
      */
     int jm_parse(char* json);
 
@@ -111,50 +111,80 @@ extern "C" {
     /*                                     */
     /***************************************/
 
+    /* Once parsed, the json can be manipulated using the below functions */
+
     /*
      * Returns the key length for a particular element id in the size_t out parameter.
      * Return value from the function is zero on success and non-zero on failure. Call function jm_get_last_error() for reason.
-
      */
-    int jm_get_key_length(int id, size_t* out_value);
+    int jm_get_key_length(size_t id, size_t* out_value);
 
     /*
      * Returns the value length for a particular element id in the size_t out parameter. This assumes that the id points to an element of either a string, number, boolean or an unquoted value (not object, array etc.)
      * Return value from the function is zero on success and non-zero on failure. Call function jm_get_last_error() for reason.
      */
-    int jm_get_value_length(int id, size_t* out_value);
+    int jm_get_value_length(size_t id, size_t* out_value);
 
     /*
      * Get the key for a given id as a string if a key is present. Use jm_get_key_length() function to determine size to allocate for the buffer (the size does not include the null-terminator).
      * Returns zero on success and non-zero on failure. Call function jm_get_last_error() for reason.
      */
-    int jm_get_key(int id, char* out_buffer);
+    int jm_get_key(size_t id, char* out_buffer);
 
     /*
      * Returns the value for a given id as a string value in the output buffer.
      * Returns zero on success and non-zero on failure. Call function jm_get_last_error() for reason.
      */
-    int jm_get_value_as_string(int id, char* out_buffer);
+    int jm_get_value_as_string(size_t id, char* out_buffer);
 
-    int jm_find_next_object(int from_id, int level);
-    int jm_find_next_named_object(int from_id, int level, char* name);
-    int jm_find_next_array(int from_id, int level);
-    int jm_find_next_named_array(int from_id, int level, char* name);
-    int jm_find_next_number(int from_id, int level, char* name, char* value);
-    int jm_find_next_boolean(int from_id, int level, char* name, int* value);
-    int jm_find_next_string(int from_id, int level, char* name, char* value);
+    /*
+     * Various functions to find a particular element in the structure
+     */
+    int jm_find_next_object(size_t from_id, int level);
+    int jm_find_next_named_object(size_t from_id, int level, char* name);
+    int jm_find_next_array(size_t from_id, int level);
+    int jm_find_next_named_array(size_t from_id, int level, char* name);
+    int jm_find_next_number(size_t from_id, int level, char* name, char* value);
+    int jm_find_next_boolean(size_t from_id, int level, char* name, int* value);
+    int jm_find_next_string(size_t from_id, int level, char* name, char* value);
+
+    /*
+     * Various functions to add new elements to the structure
+     */
+
+    /*
+     * Various functions to update element values in the structure
+     */
+
+    /*
+     * Function to delete an element in the structure.
+     * The element specified and all children are deleted.
+     * Returns zero on success and non-zero on failure. Call function jm_get_last_error() for reason.
+     */
+    int jm_delete(size_t id);
+
+
+     /***************************************/
+     /*                                     */
+     /*            Serialization            */
+     /*                                     */
+     /***************************************/
+
+    /* Once the manipulation is done, the functions below are used to serialize the structure to a string */
+
+    /*
+     * Gets the needed size of the buffer (without NULL-terminator) in the output_size parameter. 
+     * Provide the format as second parameter, either PRETTY or COMPACT.
+     * Returns zero on success and non-zero on failure. Call function jm_get_last_error() for reason.
+     */
+    int jm_calculate_size(size_t* output_size, jm_format_t* type);
 
     /**
-     * Serialize a Json-structure to a string.
+     * Serialize a Json-structure to a string. Call function jm_calculate_size() to get the size needed to allocate for the buffer.
+     * Returns zero on success or negative value on failure. Call function jm_get_last_error() for reason.
      *
-     * Parameters:
-     *      root:        If you have parsed or created a new structure and want to serialize the whole structure, you can pass NULL here. Its purpose is to be able to serialize part of a structure.
-     *      print_type:  Use a value from the jm_format_t struct, either JM_COMPACT (no spaces or line breaks) or JM_PRETTY (formatted). If NULL is passed, JM_PRETTY is assumed.
-     *      output_size: The size in bytes of the string returned. If you don't care about the size you can pass NULL here.
-     *
-     * Returns a pointer to a string containing the serialized data.
      */
-    char* jm_serialize(jm_element_t* root_element, jm_format_t print_type, uint* output_size);
+    int jm_serialize(char* output, jm_format_t* type);
 
 
 
@@ -166,7 +196,7 @@ extern "C" {
 
      /*
       * Convenience function to get the next element id. Root element id is always zero.
-      * If no root element exist a negative value is returned.
+      * If the id provided doesn't exist a negative value is returned.
       */
     int jm_next_id(int id);
 
