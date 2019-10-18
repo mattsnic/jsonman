@@ -36,7 +36,7 @@ extern "C" {
      *  Enum for possible causes of error
      */
     typedef enum {
-        JM_NO_ERROR = 0,
+        JM_NO_ERROR                       = 0,
         JM_ERROR_INVALID_INPUT            = 1,
         JM_ERROR_MEM_ALLOC                = 2,
         JM_ERROR_NO_DATA                  = 3,
