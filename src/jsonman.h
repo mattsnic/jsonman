@@ -57,6 +57,7 @@ extern "C" {
 
     typedef struct {
         short type;
+        int level;
         size_t key_start;
         size_t key_end;
         size_t value_start;
