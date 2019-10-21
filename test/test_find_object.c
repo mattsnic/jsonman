@@ -58,13 +58,16 @@ int main()
     jm_parse(json);
     ERROR_CODE_CHECK;
 
-    int object_id;
-    object_id = jm_find_next_object(0, -1);
-    ASSERT_EQUALS(1, object_id);
+    int result;
+    size_t id_found;
+    result = jm_find_next_object(0, &id_found, -1);
+    ASSERT_EQUALS(0, result);
+    ASSERT_EQUALS(1, id_found);
 
-    ++object_id;
-    object_id = jm_find_next_object(object_id, -1);
-    ASSERT_EQUALS(13, object_id);
+    ++id_found;
+    result = jm_find_next_object(id_found, &id_found, -1);
+    ASSERT_EQUALS(0, result);
+    ASSERT_EQUALS(13, id_found);
 
     jm_free();
     MEM_ALLOC_CHECK;

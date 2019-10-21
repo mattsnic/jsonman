@@ -60,37 +60,45 @@ int main()
     jm_parse(json);
     ERROR_CODE_CHECK;
 
-    int object_id;
-    object_id = jm_find_next_boolean(0, -1, NULL, NULL);
-    ASSERT_EQUALS(13, object_id);
+    int result;
+    size_t id_found;
+    result = jm_find_next_boolean(0, &id_found, -1, NULL, NULL);
+    ASSERT_EQUALS(0, result);
+    ASSERT_EQUALS(13, id_found);
 
-    ++object_id;
-    object_id = jm_find_next_boolean(object_id, -1, NULL, NULL);
-    ASSERT_EQUALS(48, object_id);
+    ++id_found;
+    result = jm_find_next_boolean(id_found, &id_found, -1, NULL, NULL);
+    ASSERT_EQUALS(0, result);
+    ASSERT_EQUALS(48, id_found);
 
     //Find by name (key)
-    object_id = jm_find_next_boolean(0, -1, "\"married\"", NULL);
-    ASSERT_EQUALS(13, object_id);
+    result = jm_find_next_boolean(0, &id_found, -1, "\"married\"", NULL);
+    ASSERT_EQUALS(0, result);
+    ASSERT_EQUALS(13, id_found);
 
-    object_id = jm_find_next_boolean(0, -1, "\"drivers_license\"", NULL);
-    ASSERT_EQUALS(48, object_id);
+    result = jm_find_next_boolean(0, &id_found, -1, "\"drivers_license\"", NULL);
+    ASSERT_EQUALS(0, result);
+    ASSERT_EQUALS(48, id_found);
 
     //Find by value
     int value = 1; //true
-    object_id = jm_find_next_boolean(0, -1, NULL, &value);  
-    ASSERT_EQUALS(13, object_id);
+    result = jm_find_next_boolean(0, &id_found, -1, NULL, &value);
+    ASSERT_EQUALS(0, result);
+    ASSERT_EQUALS(13, id_found);
 
     value = 0; //false
-    object_id = jm_find_next_boolean(0, -1, NULL, &value);  
-    ASSERT_EQUALS(48, object_id);
+    result = jm_find_next_boolean(0, &id_found, -1, NULL, &value);
+    ASSERT_EQUALS(0, result);
+    ASSERT_EQUALS(48, id_found);
 
     //Find by level
-    object_id = jm_find_next_boolean(0, 1, NULL, NULL);
-    ASSERT_EQUALS(13, object_id);
-    ASSERT_VALUE(object_id, 4, "true");
+    result = jm_find_next_boolean(0, &id_found, 1, NULL, NULL);
+    ASSERT_EQUALS(0, result);
+    ASSERT_EQUALS(13, id_found);
+    ASSERT_VALUE(id_found, 4, "true");
 
-    object_id = jm_find_next_boolean(0, 2, NULL, NULL);
-    ASSERT_EQUALS(-1, object_id);
+    result = jm_find_next_boolean(0, &id_found, 2, NULL, NULL);
+    ASSERT_EQUALS(-1, result);
     ASSERT_EQUALS(JM_ERROR_ELEMENT_NOT_FOUND, jm_get_last_error());
 
     jm_free();

@@ -80,14 +80,15 @@ static const short INDENT_SPACES = 4;
 uint MALLOCS;
 uint FREES;
 
-jm_element_t* element_array = NULL;
-char* value_array = NULL;
-size_t nr_objects_store = 0;
+static jm_element_t* element_array = NULL;
+static char* value_array = NULL;
+static size_t nr_objects_store = 0;
 
 
 static jm_error_t jm_last_error = JM_NO_ERROR;
 static size_t jm_error_pos = 0;
-
+static jm_user_defined_t* jm_p_user_defined;
+static size_t user_defined_id = 0;
 static char* serialized_output = NULL;
 
 
@@ -536,19 +537,83 @@ static void init_parse(char* json, size_t* nr_objects, size_t* values_size)
     nr_objects_store = *nr_objects;
 }
 
-static int find_unnamed_element(const char type, size_t* from_id, int* level)
+
+static int validate_out_param(void* p)
+{
+    NO_ERROR;
+    if (!p)
+    {
+        jm_last_error = JM_ERROR_INVALID_OUT_PARAMETER;
+        return 0;
+    }
+    return 1;
+}
+static int validate_id(size_t* id, size_t* out_id)
+{
+    NO_ERROR;
+    if (!id || nr_objects_store <= *id)
+    {
+        jm_last_error = JM_ERROR_INVALID_ID;
+        return 0;
+    }
+    if (!validate_out_param(out_id))
+    {
+        return 0;
+    }
+    return 1;
+}
+
+static int validate_id_and_buffer(size_t* id, char* out)
+{
+    NO_ERROR;
+    if (!id || nr_objects_store <= *id)
+    {
+        jm_last_error = JM_ERROR_INVALID_ID;
+        return 0;
+    }
+    if (!validate_out_param(out))
+    {
+        return 0;
+    }
+    return 1;
+}
+
+static int validate_root()
+{
+    NO_ERROR;
+    if (!jm_p_user_defined)
+    {
+        jm_last_error = JM_ERROR_NO_ROOT;
+        return 0;
+    }
+    return 1;
+}
+
+static int validate_type(const char type)
+{
+    NO_ERROR;
+    if (type >= 1 && type <= 10)
+    {
+        return 1;
+    }
+    jm_last_error = JM_ERROR_INVALID_TYPE;
+    return 0;
+}
+
+
+static int find_unnamed_element(const char type, size_t* from_id, size_t* out_value, int* level)
 {
     if (!element_array || nr_objects_store <= 0)
     {
         jm_last_error = JM_ERROR_NO_DATA;
         return -1;
     }
-    int id = *from_id < 0 ? 0 : *from_id;
-    if (id >= nr_objects_store)
+    if (!validate_id(from_id, out_value))
     {
-        jm_last_error = JM_ERROR_INVALID_ID;
         return -1;
     }
+
+    int id = *from_id < 0 ? 0 : *from_id;
 
     for (int i = id; i < nr_objects_store; i++)
     {
@@ -556,11 +621,13 @@ static int find_unnamed_element(const char type, size_t* from_id, int* level)
         {
             if (*level >= 0 && element_array[i].level == *level)
             {
-                return i;
+                *out_value = i;
+                return 0;
             }
             else if (*level < 0)
             {
-                return i;
+                *out_value = i;
+                return 0;
             }
         }
     }
@@ -568,19 +635,19 @@ static int find_unnamed_element(const char type, size_t* from_id, int* level)
     return -1;
 }
 
-static int find_named_element(const char type, size_t* from_id, int* level, char* key_in, char* value_in)
+static int find_named_element(const char type, size_t* from_id, size_t* out_value, int* level, char* key_in, char* value_in)
 {
     if (!element_array || nr_objects_store <= 0)
     {
         jm_last_error = JM_ERROR_NO_DATA;
         return -1;
     }
-    int id = *from_id < 0 ? 0 : *from_id;
-    if (id >= nr_objects_store)
+    if (!validate_id(from_id, out_value))
     {
-        jm_last_error = JM_ERROR_INVALID_ID;
         return -1;
     }
+
+    int id = *from_id < 0 ? 0 : *from_id;
 
     for (int i = id; i < nr_objects_store; i++)
     {
@@ -594,7 +661,8 @@ static int find_named_element(const char type, size_t* from_id, int* level, char
                     {
                         continue;
                     }
-                    return i;
+                    *out_value = i;
+                    return 0;
                 }
                 else
                 {
@@ -659,13 +727,73 @@ static int find_named_element(const char type, size_t* from_id, int* level, char
             }
             if (match)
             {
-                return i;
+                *out_value = i;
+                return 0;
             }
         }
     }
     jm_last_error = JM_ERROR_ELEMENT_NOT_FOUND;
     return -1;
 }
+
+static int new_root(const char type, size_t* id_out)
+{
+    if (validate_out_param(id_out))
+    {
+        return -1;
+    }
+    jm_free();
+    jm_p_user_defined = jm_malloc(sizeof(jm_user_defined_t));
+    if (!jm_p_user_defined)
+    {
+        return -1;
+    }
+    jm_p_user_defined->id = user_defined_id++;
+    jm_p_user_defined->type = type;
+    *id_out = jm_p_user_defined->id;
+    return 0;
+}
+
+static int new_element(const char type, jm_user_defined_operation_t operation, size_t parent_id, char* key, char* value, size_t* id_out)
+{
+    if (!validate_out_param(id_out))
+    {
+        return -1;
+    }
+    if (nr_objects_store <= 0 && !validate_root())
+    {
+        return -1;
+    }
+    if (!validate_type(type))
+    {
+        return -1;
+    }
+    jm_user_defined_t* t = jm_p_user_defined;
+    while (t->next)
+    {
+        t = t->next;
+    }
+    t->next = jm_malloc(sizeof(jm_user_defined_t));
+    t->type = type;
+    t->op = operation;
+    t->parent_id = parent_id;
+    if (key)
+    {
+        size_t len = strlen(key);
+        t->key = jm_malloc(len + 1);
+        memcpy(t->key, key, len);
+    }
+    if (value)
+    {
+        size_t len = strlen(value);
+        t->value = jm_malloc(len + 1);
+        memcpy(t->value, value, len);
+    }
+    t->id = user_defined_id++;
+    *id_out = t->id;
+    return 0;
+}
+
 
 
 //************************* Public functions below *************************************
@@ -713,32 +841,19 @@ int jm_parse(char* json)
 
 int jm_get_key_length(size_t id, size_t* out_value)
 {
-    NO_ERROR;
-    if (!out_value)
+    if (!validate_id(&id, out_value))
     {
-        jm_last_error = JM_ERROR_OUT_PARAMETER_IS_NULL;
         return -1;
     }
-    if (nr_objects_store <= id)
-    {
-        jm_last_error = JM_ERROR_INVALID_ID;
-        return -1;
-    }
+
     *out_value = (1 + element_array[id].key_end) - element_array[id].key_start;
     return 0;
 }
 
 int jm_get_value_length(size_t id, size_t* out_value)
 {
-    NO_ERROR;
-    if (!out_value)
+    if (!validate_id(&id, out_value))
     {
-        jm_last_error = JM_ERROR_OUT_PARAMETER_IS_NULL;
-        return -1;
-    }
-    if (nr_objects_store <= id)
-    {
-        jm_last_error = JM_ERROR_INVALID_ID;
         return -1;
     }
     if (element_array[id].type == JM_OBJECT || element_array[id].type == JM_NAMED_OBJECT
@@ -753,15 +868,8 @@ int jm_get_value_length(size_t id, size_t* out_value)
 
 int jm_get_key(size_t id, char* out_buffer)
 {
-    NO_ERROR;
-    if (!out_buffer)
+    if (!validate_id_and_buffer(&id, out_buffer))
     {
-        jm_last_error = JM_ERROR_OUT_PARAMETER_IS_NULL;
-        return -1;
-    }
-    if (nr_objects_store <= id)
-    {
-        jm_last_error = JM_ERROR_INVALID_ID;
         return -1;
     }
     size_t size = (1 + element_array[id].key_end) - element_array[id].key_start;
@@ -778,15 +886,8 @@ int jm_get_key(size_t id, char* out_buffer)
 
 int jm_get_value_as_string(size_t id, char* out_buffer)
 {
-    NO_ERROR;
-    if (!out_buffer)
+    if (!validate_id_and_buffer(&id, out_buffer))
     {
-        jm_last_error = JM_ERROR_OUT_PARAMETER_IS_NULL;
-        return -1;
-    }
-    if (nr_objects_store <= id)
-    {
-        jm_last_error = JM_ERROR_INVALID_ID;
         return -1;
     }
     if (element_array[id].type == JM_OBJECT || element_array[id].type == JM_NAMED_OBJECT
@@ -808,65 +909,132 @@ int jm_get_value_as_string(size_t id, char* out_buffer)
     return 0;
 }
 
-int jm_find_next_object(size_t from_id, int level)
+int jm_find_next_object(size_t from_id, size_t* id_found, int level)
 {
-    NO_ERROR;
-    return find_unnamed_element(JM_OBJECT, &from_id, &level);
+    return find_unnamed_element(JM_OBJECT, &from_id, id_found, &level);
 }
 
-int jm_find_next_named_object(size_t from_id, int level, char* name)
+int jm_find_next_named_object(size_t from_id, size_t* id_found, int level, char* name)
 {
-    NO_ERROR;
-    return find_named_element(JM_NAMED_OBJECT, &from_id, &level, name, NULL);
+    return find_named_element(JM_NAMED_OBJECT, &from_id, id_found, &level, name, NULL);
 }
 
-int jm_find_next_array(size_t from_id, int level)
+int jm_find_next_array(size_t from_id, size_t* id_found, int level)
 {
-    NO_ERROR;
-    return find_unnamed_element(JM_ARRAY, &from_id, &level);
+    return find_unnamed_element(JM_ARRAY, &from_id, id_found, &level);
 }
 
-int jm_find_next_named_array(size_t from_id, int level, char* name)
+int jm_find_next_named_array(size_t from_id, size_t* id_found, int level, char* name)
 {
-    NO_ERROR;
-    return find_named_element(JM_NAMED_ARRAY, &from_id, &level, name, NULL);
+    return find_named_element(JM_NAMED_ARRAY, &from_id, id_found, &level, name, NULL);
 }
 
-int jm_find_next_number(size_t from_id, int level, char* name, char* value)
+int jm_find_next_number(size_t from_id, size_t* id_found, int level, char* name, char* value)
 {
-    NO_ERROR;
-    return find_named_element(JM_NUMBER, &from_id, &level, name, value);
+    return find_named_element(JM_NUMBER, &from_id, id_found, &level, name, value);
 }
 
-int jm_find_next_boolean(size_t from_id, int level, char* name, int* value)
+int jm_find_next_boolean(size_t from_id, size_t* id_found, int level, char* name, int* value)
 {
-    NO_ERROR;
     if (value)
     {
         if (*value)
         {
-            return find_named_element(JM_BOOLEAN, &from_id, &level, name, "true");
+            return find_named_element(JM_BOOLEAN, &from_id, id_found, &level, name, "true");
         }
         else
         {
-            return find_named_element(JM_BOOLEAN, &from_id, &level, name, "false");
+            return find_named_element(JM_BOOLEAN, &from_id, id_found, &level, name, "false");
         }
     }
-    return find_named_element(JM_BOOLEAN, &from_id, &level, name, NULL);
+    return find_named_element(JM_BOOLEAN, &from_id, id_found, &level, name, NULL);
 }
 
-int jm_find_next_string(size_t from_id, int level, char* name, char* value)
+int jm_find_next_string(size_t from_id, size_t* id_found, int level, char* name, char* value)
 {
-    NO_ERROR;
-    return find_named_element(JM_STRING, &from_id, &level, name, value);
+    return find_named_element(JM_STRING, &from_id, id_found, &level, name, value);
 }
 
-
-uint jm_new()
+int jm_new_root_object(size_t* id)
 {
-    NO_ERROR;
-    return jm_last_error = JM_NO_ERROR;
+    return new_root(JM_OBJECT, id);
 }
+
+int jm_new_root_array(size_t* id)
+{
+    return new_root(JM_ARRAY, id);
+}
+
+int jm_add_object(size_t id, size_t* id_out)
+{
+    if (id < nr_objects_store)
+    {
+        if (element_array[id].type != JM_OBJECT &&
+            element_array[id].type != JM_NAMED_OBJECT &&
+            element_array[id].type != JM_ARRAY &&
+            element_array[id].type != JM_NAMED_ARRAY)
+        {
+            jm_last_error = JM_ERROR_PARENT_ELEMENT_WRONG_TYPE;
+            return -1;
+        }
+        new_element(JM_OBJECT, CREATE, id, NULL, NULL, id_out);
+        return 0;
+    }
+    else if (jm_p_user_defined)
+    {
+        jm_user_defined_t* ptr = jm_p_user_defined;
+        while (ptr->next)
+        {   
+            if (id == ptr->id)
+            {
+                if (ptr->type != JM_OBJECT &&
+                    ptr->type != JM_NAMED_OBJECT &&
+                    ptr->type != JM_ARRAY &&
+                    ptr->type != JM_NAMED_ARRAY)
+                {
+                    jm_last_error = JM_ERROR_PARENT_ELEMENT_WRONG_TYPE;
+                    return -1;
+                }
+                new_element(JM_OBJECT, CREATE, id, NULL, NULL, id_out);
+                return 0;
+            }
+            ptr = ptr->next;
+        }
+    }
+    jm_last_error = JM_ERROR_ELEMENT_NOT_FOUND;
+    return -1;
+}
+
+int jm_add_array(size_t parent_id, size_t* id_out)
+{
+    return 0;
+}
+
+int jm_add_named_object(size_t parent_id, char* name, size_t* id_out)
+{
+    return 0;
+}
+
+int jm_add_named_array(size_t parent_id, char* name, size_t* id_out)
+{
+    return 0;
+}
+
+int jm_add_number(size_t parent_id, char* name, char* number, size_t* id_out)
+{
+    return 0;
+}
+
+int jm_add_boolean(size_t parent_id, char* name, uint value, size_t* id_out)
+{
+    return 0;
+}
+
+int jm_add_string(size_t parent_id, char* name, char* value, size_t* id_out)
+{
+    return 0;
+}
+
 
 
 int jm_next_id(int id)

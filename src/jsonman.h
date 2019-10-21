@@ -36,15 +36,18 @@ extern "C" {
      *  Enum for possible causes of error
      */
     typedef enum {
-        JM_NO_ERROR                       = 0,
-        JM_ERROR_INVALID_INPUT            = 1,
-        JM_ERROR_MEM_ALLOC                = 2,
-        JM_ERROR_NO_DATA                  = 3,
-        JM_ERROR_STACK_OVERFLOW           = 4,
-        JM_ERROR_INVALID_ID               = 5,
-        JM_ERROR_SIMPLE_VALUE_NOT_PRESENT = 6,
-        JM_ERROR_OUT_PARAMETER_IS_NULL    = 7,
-        JM_ERROR_ELEMENT_NOT_FOUND        = 8
+        JM_NO_ERROR                        =  0,
+        JM_ERROR_INVALID_INPUT             =  1,
+        JM_ERROR_MEM_ALLOC                 =  2,
+        JM_ERROR_NO_DATA                   =  3,
+        JM_ERROR_STACK_OVERFLOW            =  4,
+        JM_ERROR_INVALID_ID                =  5,
+        JM_ERROR_SIMPLE_VALUE_NOT_PRESENT  =  6,
+        JM_ERROR_INVALID_OUT_PARAMETER     =  7,
+        JM_ERROR_ELEMENT_NOT_FOUND         =  8,
+        JM_ERROR_PARENT_ELEMENT_WRONG_TYPE =  9,
+        JM_ERROR_NO_ROOT                   = 10,
+        JM_ERROR_INVALID_TYPE              = 11
     } jm_error_t;
 
     /**
@@ -63,6 +66,23 @@ extern "C" {
         size_t value_start;
         size_t value_end;
     } jm_element_t;
+
+    typedef enum jm_user_defined_operation {
+        CREATE,
+        UPDATE,
+        DELETE
+    } jm_user_defined_operation_t;
+
+    typedef struct jm_user_defined {
+        short type;
+        jm_user_defined_operation_t op;
+        size_t id;
+        size_t parent_id;
+        int level;
+        char* key;
+        char* value;
+        struct jm_user_defined* next;
+    } jm_user_defined_t;
 
     extern uint MALLOCS;
     extern uint FREES;
@@ -138,19 +158,27 @@ extern "C" {
     int jm_get_value_as_string(size_t id, char* out_buffer);
 
     /*
-     * Various functions to find a particular element in the structure
+     * Various functions to find a particular element in the structure.
      */
-    int jm_find_next_object(size_t from_id, int level);
-    int jm_find_next_named_object(size_t from_id, int level, char* name);
-    int jm_find_next_array(size_t from_id, int level);
-    int jm_find_next_named_array(size_t from_id, int level, char* name);
-    int jm_find_next_number(size_t from_id, int level, char* name, char* value);
-    int jm_find_next_boolean(size_t from_id, int level, char* name, int* value);
-    int jm_find_next_string(size_t from_id, int level, char* name, char* value);
+    int jm_find_next_object(size_t from_id, size_t* id_found, int level);
+    int jm_find_next_named_object(size_t from_id, size_t* id_found, int level, char* name);
+    int jm_find_next_array(size_t from_id, size_t* id_found, int level);
+    int jm_find_next_named_array(size_t from_id, size_t* id_found, int level, char* name);
+    int jm_find_next_number(size_t from_id, size_t* id_found, int level, char* name, char* value);
+    int jm_find_next_boolean(size_t from_id, size_t* id_found, int level, char* name, int* value);
+    int jm_find_next_string(size_t from_id, size_t* id_found, int level, char* name, char* value);
 
     /*
      * Various functions to add new elements to the structure
      */
+    int jm_add_object(size_t parent_id, size_t* id_out);
+    int jm_add_array(size_t parent_id, size_t* id_out);
+    int jm_add_named_object(size_t parent_id, char* name, size_t* id_out);
+    int jm_add_named_array(size_t parent_id, char* name, size_t* id_out);
+    int jm_add_number(size_t parent_id, char* name, char* number, size_t* id_out);
+    int jm_add_boolean(size_t parent_id, char* name, uint value, size_t* id_out);
+    int jm_add_string(size_t parent_id, char* name, char* value, size_t* id_out);
+
 
     /*
      * Various functions to update element values in the structure
@@ -162,6 +190,12 @@ extern "C" {
      * Returns zero on success and non-zero on failure. Call function jm_get_last_error() for reason.
      */
     int jm_delete(size_t id);
+
+    /*
+     * Begin creating a new json structure, either by an object or an array as root.
+     */
+    int jm_new_root_object(size_t* id);
+    int jm_new_root_array(size_t* id);
 
 
      /***************************************/
