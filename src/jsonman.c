@@ -120,6 +120,18 @@ static void free_value(void* ptr)
 
 }
 
+static void free_user_defined()
+{
+    if (jm_p_user_defined)
+    {
+        if (jm_p_user_defined->next)
+        {
+            free_user_defined(jm_p_user_defined->next);
+        }
+        free_value(jm_p_user_defined);
+    }
+}
+
 static uint is_boolean(char* json, size_t* start, size_t* end) {
 
     int length = *end - *start;
@@ -450,7 +462,9 @@ static void parse(char* json, size_t* nr_objects, size_t* values_size)
     {
         jm_last_error = JM_ERROR_INVALID_INPUT;
         jm_error_pos = -1;
+        return;
     }
+    user_defined_id = *nr_objects;
 }
 
 static void init_parse(char* json, size_t* nr_objects, size_t* values_size)
@@ -816,6 +830,11 @@ void jm_free()
         free_value(serialized_output);
         serialized_output = NULL;
     }
+    if (jm_p_user_defined)
+    {
+        free_user_defined(jm_p_user_defined);
+    }
+    user_defined_id = 0;
 }
 
 int jm_parse(char* json)
@@ -1035,6 +1054,42 @@ int jm_add_string(size_t parent_id, char* name, char* value, size_t* id_out)
     return 0;
 }
 
+int delete_element(size_t id)
+{
+    if (element_array && id < nr_objects_store)
+    {
+        if ((element_array[id].flags & DELETE) > 0)
+        {
+            jm_last_error = JM_ERROR_ELEMENT_NOT_FOUND;
+            return -1;
+        }
+
+        if (element_array[id].type == JM_ARRAY)
+        {
+            if (id > 0 && element_array[id - 1].type == JM_NAMED_ARRAY)
+            {
+                element_array[id - 1].flags = element_array[id - 1].flags | DELETE;
+            }
+            element_array[id].flags = element_array[id].flags | DELETE;
+            size_t level = -1;
+            size_t count = id;
+            while (level != 0)
+            {
+                ++count;
+                if (element_array[count].type == JM_ARRAY)
+                {
+                    --level;
+                }
+                else if (element_array[count].type == JM_ARRAY_END)
+                {
+                    ++level;
+                }
+                element_array[count].flags = element_array[count].flags | DELETE;
+            }
+        }
+    }
+}
+
 
 
 int jm_next_id(int id)
@@ -1068,13 +1123,46 @@ short jm_get_type(int id)
     return -1;
 }
 
-int jm_calculate_size(size_t* output_size, jm_format_t* type)
+static uint is_deleted(size_t* id)
 {
-    NO_ERROR;
+    if (jm_p_user_defined)
+    {
+        if (jm_p_user_defined->parent_id == *id && jm_p_user_defined->op == DELETE)
+        {
+            return 1;
+        }
+        jm_user_defined_t* ptr = jm_p_user_defined->next;
+        while (ptr)
+        {
+            if (ptr->parent_id == *id && ptr->op == DELETE)
+            {
+                return 1;
+            }
+            ptr = ptr->next;
+        }
+    }
     return 0;
 }
 
-int jm_serialize(char* output, jm_format_t* type)
+int jm_calculate_size(jm_format_t type, size_t* output_size)
+{
+    if (!validate_out_param(output_size))
+    {
+        return -1;
+    }
+    if (element_array)
+    {
+
+    }
+    else
+    {
+
+    }
+
+    return 0;
+}
+
+int jm_serialize(jm_format_t type, char* output)
 {
     NO_ERROR;
 
