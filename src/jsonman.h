@@ -65,12 +65,13 @@ extern "C" {
         size_t key_end;
         size_t value_start;
         size_t value_end;
+        size_t flags;
     } jm_element_t;
 
     typedef enum jm_user_defined_operation {
-        CREATE,
-        UPDATE,
-        DELETE
+        CREATE = 1,
+        UPDATE = 2,
+        DELETE = 4
     } jm_user_defined_operation_t;
 
     typedef struct jm_user_defined {
@@ -211,14 +212,14 @@ extern "C" {
      * Provide the format as second parameter, either PRETTY or COMPACT.
      * Returns zero on success and non-zero on failure. Call function jm_get_last_error() for reason.
      */
-    int jm_calculate_size(size_t* output_size, jm_format_t* type);
+    int jm_calculate_size(jm_format_t type, size_t* output_size);
 
     /**
      * Serialize a Json-structure to a string. Call function jm_calculate_size() to get the size needed to allocate for the buffer.
      * Returns zero on success or negative value on failure. Call function jm_get_last_error() for reason.
      *
      */
-    int jm_serialize(char* output, jm_format_t* type);
+    int jm_serialize(jm_format_t type, char* output);
 
 
 
