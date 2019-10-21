@@ -76,7 +76,7 @@ extern "C" {
 
     typedef struct jm_user_defined {
         short type;
-        jm_user_defined_operation_t op;
+        size_t flags;
         size_t id;
         size_t parent_id;
         int level;

@@ -789,7 +789,7 @@ static int new_element(const char type, jm_user_defined_operation_t operation, s
     }
     t->next = jm_malloc(sizeof(jm_user_defined_t));
     t->type = type;
-    t->op = operation;
+    t->flags = t->flags | operation;
     t->parent_id = parent_id;
     if (key)
     {
@@ -808,6 +808,158 @@ static int new_element(const char type, jm_user_defined_operation_t operation, s
     return 0;
 }
 
+static jm_user_defined_t* get_user_defined(size_t* id)
+{
+    if (jm_p_user_defined)
+    {
+        if (jm_p_user_defined->parent_id == *id && ((jm_p_user_defined->flags & DELETE) > 0))
+        {
+            return NULL;
+        }
+        jm_user_defined_t* ptr = jm_p_user_defined->next;
+        while (ptr)
+        {
+            if (ptr->parent_id == *id && ((ptr->flags & DELETE) > 0))
+            {
+                return NULL;
+            }
+            else if (ptr->parent_id == *id)
+            {
+                return ptr;
+            }
+            ptr = ptr->next;
+        }
+    }
+    return NULL;
+}
+
+static int delete_object_or_array(size_t* id, uint user_defined, uint is_object)
+{
+    char start_type;
+    char end_type;
+    if (is_object)
+    {
+        start_type = JM_OBJECT;
+        end_type = JM_OBJECT_END;
+    }
+    else
+    {
+        start_type = JM_ARRAY;
+        end_type = JM_ARRAY_END;
+    }
+    if (user_defined)
+    {
+        jm_user_defined_t* user_defined = get_user_defined(id);
+        size_t level = -1;
+        while (level != 0)
+        {
+            user_defined = user_defined->next;
+            if (user_defined)
+            {
+                if (user_defined->type == start_type)
+                {
+                    --level;
+                }
+                else if (user_defined->type == end_type)
+                {
+                    ++level;
+                }
+                user_defined->flags = user_defined->flags | DELETE;
+            }
+        }
+    }
+    else
+    {
+        if (id > 0 && element_array[*id - 1].type == JM_NAMED_ARRAY && ((element_array[*id - 1].flags & DELETE) == 0))
+        {
+            element_array[*id - 1].flags = element_array[*id - 1].flags | DELETE;
+        }
+        element_array[*id].flags = element_array[*id].flags | DELETE;
+        size_t level = -1;
+        size_t count = *id;
+        while (level != 0)
+        {
+            ++count;
+            if (element_array[count].type == start_type)
+            {
+                --level;
+            }
+            else if (element_array[count].type == end_type)
+            {
+                ++level;
+            }
+            element_array[count].flags = element_array[count].flags | DELETE;
+        }
+    }
+    return 0;
+}
+
+static int delete_named_object_or_named_array(size_t* id, uint is_user_defined, uint is_named_object)
+{
+    if (is_user_defined)
+    {
+        jm_user_defined_t* user_defined = get_user_defined(id);
+        if (!user_defined)
+        {
+            return -1;
+        }
+        user_defined->flags = user_defined->flags | DELETE;
+        if (is_named_object)
+        {
+            if (user_defined->next && user_defined->next->type == JM_OBJECT)
+            {
+                return delete_object_or_array(user_defined->next->id, 1, 1);
+            }
+        }
+        else
+        {
+            if (user_defined->next && user_defined->next->type == JM_ARRAY)
+            {
+                return delete_object_or_array(user_defined->next->id, 1, 0);
+            }
+        }
+    }
+    else
+    {
+        element_array[*id].flags = element_array[*id].flags | DELETE;
+        if (((*id) + 1) < nr_objects_store)
+        {
+            if (is_named_object)
+            {
+                if (element_array[(*id) + 1].type == JM_OBJECT)
+                {
+                    return delete_object_or_array((*id) + 1, 0, 1);
+                }
+            }
+            else
+            {
+                if (element_array[(*id) + 1].type == JM_ARRAY)
+                {
+                    return delete_object_or_array((*id) + 1, 0, 0);
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+static int delete_simple_type(size_t* id, uint is_user_defined)
+{
+    if (is_user_defined)
+    {
+        jm_user_defined_t* user_defined = get_user_defined(id);
+        if (!user_defined)
+        {
+            return -1;
+        }
+        user_defined->flags = user_defined->flags | DELETE;
+    }
+    else
+    {
+        element_array[*id].flags = element_array[*id].flags | DELETE;
+    }
+    return 0;
+}
 
 
 //************************* Public functions below *************************************
@@ -1064,29 +1216,26 @@ int delete_element(size_t id)
             return -1;
         }
 
-        if (element_array[id].type == JM_ARRAY)
+        if (element_array[id].type == JM_OBJECT) return delete_object_or_array(&id, 0, 1);
+        else if (element_array[id].type == JM_ARRAY) return delete_object_or_array(&id, 0, 0);
+        else if (element_array[id].type == JM_NAMED_OBJECT) return delete_named_object_or_named_array(&id, 0, 1);
+        else if (element_array[id].type == JM_NAMED_ARRAY) return delete_named_object_or_named_array(&id, 0, 0);
+        else return delete_simple_type(&id, 0);
+    }
+    else
+    {
+        jm_user_defined_t* ptr = get_user_defined(id);
+        if (!ptr)
         {
-            if (id > 0 && element_array[id - 1].type == JM_NAMED_ARRAY)
-            {
-                element_array[id - 1].flags = element_array[id - 1].flags | DELETE;
-            }
-            element_array[id].flags = element_array[id].flags | DELETE;
-            size_t level = -1;
-            size_t count = id;
-            while (level != 0)
-            {
-                ++count;
-                if (element_array[count].type == JM_ARRAY)
-                {
-                    --level;
-                }
-                else if (element_array[count].type == JM_ARRAY_END)
-                {
-                    ++level;
-                }
-                element_array[count].flags = element_array[count].flags | DELETE;
-            }
+            jm_last_error = JM_ERROR_ELEMENT_NOT_FOUND;
+            return -1;
         }
+
+        if (ptr->type == JM_OBJECT) return delete_object_or_array(&id, 1, 1);
+        else if (ptr->type == JM_ARRAY) return delete_object_or_array(&id, 1, 0);
+        else if (ptr->type == JM_NAMED_OBJECT) return delete_named_object_or_named_array(&id, 1, 1);
+        else if (ptr->type == JM_NAMED_ARRAY) return delete_named_object_or_named_array(&id, 1, 0);
+        else return delete_simple_type(&id, 1);
     }
 }
 
@@ -1123,26 +1272,7 @@ short jm_get_type(int id)
     return -1;
 }
 
-static uint is_deleted(size_t* id)
-{
-    if (jm_p_user_defined)
-    {
-        if (jm_p_user_defined->parent_id == *id && jm_p_user_defined->op == DELETE)
-        {
-            return 1;
-        }
-        jm_user_defined_t* ptr = jm_p_user_defined->next;
-        while (ptr)
-        {
-            if (ptr->parent_id == *id && ptr->op == DELETE)
-            {
-                return 1;
-            }
-            ptr = ptr->next;
-        }
-    }
-    return 0;
-}
+
 
 int jm_calculate_size(jm_format_t type, size_t* output_size)
 {
